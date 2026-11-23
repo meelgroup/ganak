@@ -111,10 +111,20 @@ endif()
 add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)
 add_executable(example-c-bin example.c)
-add_executable(ddnnf-cleanup-bin ddnnf_cleanup.cpp)
-add_executable(ddnnf2dot-bin ddnnf2dot.cpp)
-add_executable(ddnnf-verify-bin ddnnf_verify.cpp)
-target_link_libraries(ddnnf-verify-bin PRIVATE PkgConfig::GMP)
+add_executable(bdnnf-bin bdnnf_main.cpp bdnnf_verify.cpp bdnnf_query.cpp
+  bdnnf_dump.cpp bdnnf_to_d4.cpp bdnnf_dot.cpp bdnnf_compact.cpp)
+target_link_libraries(bdnnf-bin PRIVATE PkgConfig::GMP)
+add_executable(ganak-model-bin gmodel_main.cpp gmodel_parse.cpp gmodel_encode.cpp)
+add_executable(bdnnf-compact-fuzz bdnnf_compact_fuzz.cpp)
+set_target_properties(bdnnf-compact-fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+if(ZSTD_FOUND)
+  # Plain library paths, not an imported target: keeps the exported static
+  # ganak target usable without a matching find_dependency.
+  foreach(t ganak bdnnf-bin bdnnf-compact-fuzz)
+    target_include_directories(${t} PRIVATE ${ZSTD_INCLUDE_DIRS})
+    target_link_libraries(${t} PRIVATE ${ZSTD_LIBRARY})
+  endforeach()
+endif()
 
 target_link_libraries(ganak-bin
     PRIVATE
@@ -125,6 +135,20 @@ target_link_libraries(ganak-bin
       PkgConfig::GMP
       approxmc
       treedecomp
+)
+target_link_libraries(ganak-model-bin
+    PRIVATE
+      ganak
+      arjun
+      PkgConfig::flint
+      PkgConfig::MPFR
+      PkgConfig::GMP
+      approxmc
+      treedecomp
+)
+target_include_directories(ganak-model-bin PRIVATE
+    ${PROJECT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(example-bin
     PRIVATE
@@ -188,29 +212,32 @@ set_target_properties(example-c-bin PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
   C_STANDARD 11
 )
-set_target_properties(ddnnf-cleanup-bin PROPERTIES
-  OUTPUT_NAME ddnnf-cleanup
-  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
-  INSTALL_RPATH_USE_LINK_PATH TRUE
-)
-set_target_properties(ddnnf2dot-bin PROPERTIES
-  OUTPUT_NAME ddnnf2dot
-  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
-  INSTALL_RPATH_USE_LINK_PATH TRUE
-)
-set_target_properties(ddnnf-verify-bin PROPERTIES
-  OUTPUT_NAME ddnnf-verify
+set_target_properties(ganak-model-bin PROPERTIES
+  OUTPUT_NAME ganak-model
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-  target_link_options(ddnnf-cleanup-bin PRIVATE
+  # the parser reports errors by throwing; wasm disables catching by default
+  target_compile_options(ganak-model-bin PRIVATE -fexceptions)
+  target_link_options(ganak-model-bin PRIVATE
+    "-fexceptions"
     "SHELL:-s WASM=1"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
     "SHELL:-s FORCE_FILESYSTEM=1"
   )
-  target_link_options(ddnnf2dot-bin PRIVATE
+endif()
+set_target_properties(bdnnf-bin PROPERTIES
+  OUTPUT_NAME bdnnf
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  # bdnnf reports query errors by throwing; wasm disables catching by default
+  target_compile_options(bdnnf-bin PRIVATE -fexceptions)
+  target_link_options(bdnnf-bin PRIVATE
+    "-fexceptions"
     "SHELL:-s WASM=1"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
@@ -280,17 +307,12 @@ install(TARGETS ganak-bin
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(TARGETS ddnnf-cleanup-bin
+install(TARGETS bdnnf-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(TARGETS ddnnf2dot-bin
-    EXPORT ${GANAK_EXPORT_NAME}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
-
-install(TARGETS ddnnf-verify-bin
+install(TARGETS ganak-model-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

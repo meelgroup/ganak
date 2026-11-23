@@ -1,0 +1,6 @@
+# A choice whose declaration fails, then used: errors, not a crash.
+# RUN: not %gmodel --check %s 2>&1 | %GMCheck %s
+d0 = c0
+choice c0 { v0 flip(0.5) }
+# CHECK-L: choice_error.gm:3:6: error: 'c0' is a choice: use one of its values
+# CHECK-L: choice_error.gm:4:16: error: expected a probability, found 'flip'

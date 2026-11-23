@@ -80,12 +80,22 @@ public:
   uint64_t last_restart_num_conflicts = 0;
   uint64_t last_restart_num_decisions = 0;
   uint32_t num_restarts = 0;
+  uint64_t rst_unsat = 0; // the trail's decisions had no model: its UNSAT branch is cut instead
+  uint64_t rst_skip_sat = 0; // the SAT call ran out of budget: no restart
+  uint64_t rst_levels_undone = 0;
+  double rst_time = 0;
+  uint64_t bj_deferred = 0;
 
   // Vivification
   uint64_t vivif_tried = 0;
   uint64_t vivif_tried_cl = 0;
   uint64_t vivif_cl_minim = 0;
   uint64_t vivif_lit_rem = 0;
+  uint64_t vivif_cl_rejected = 0;
+  uint64_t vivif_unit_dropped = 0;
+  uint64_t vivif_subs_red = 0;
+  uint64_t vivif_subs_irred = 0;
+  uint64_t vivif_subs_promoted = 0;
 
   // Toplevel probing
   uint64_t toplevel_probe_runs = 0;
@@ -128,6 +138,7 @@ public:
   uint64_t max_cache_size_bytes = 0;
   uint64_t num_cache_hits = 0;
   uint64_t num_cache_dels = 0;
+  uint64_t cache_inline_cnts = 0;
   uint64_t num_cache_look_ups = 0;
   uint64_t last_restart_num_cache_look_ups = 0;
   uint64_t sum_cache_hit_sizes = 0;

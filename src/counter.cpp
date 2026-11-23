@@ -21,6 +21,8 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "counter.hpp"
+#include "frontier_tables.hpp"
+#include "grouped_sweep.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -30,7 +32,9 @@ THE SOFTWARE.
 #include <iomanip>
 #include <limits>
 #include <numeric>
+#include <map>
 #include <set>
+#include <tuple>
 #include <unordered_set>
 #include <memory>
 #include <utility>
@@ -89,7 +93,8 @@ void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
     cerr << "ERROR: The optional indeps MUST contain ALL indeps, plus the optional ones" << endl;
     release_assert(false);
   }
-  if (tmp.empty()) { opt_indep_support_end = 0; return; }
+  // Vars start at 1, so 1 is empty; 0 would wrap end-1 (--compile counts 0-var CNFs)
+  if (tmp.empty()) { opt_indep_support_end = 1; return; }
   opt_indep_support_end = tmp.back()+1;
 
   verb_print(1, "opt ind size: " << std::max<int>((int)opt_indep_support_end-1, 0) << " ind size: " << std::max<int>((int)indep_support_end-1, 0)
@@ -100,8 +105,8 @@ void Counter::set_indep_support(const set<uint32_t> &indeps) {
   opt_indep_support_end = nVars()+1;
   auto tmp = common_indep_code(indeps);
   if (tmp.empty()) {
-    indep_support_end = 0;
-    opt_indep_support_end = 0;
+    indep_support_end = 1;
+    opt_indep_support_end = 1;
     return;
   }
   indep_support_end = tmp.back()+1;
@@ -484,6 +489,7 @@ uint32_t Counter::td_decompose_component(bool update_score) {
         if (i2 < (int)nodes) primal_alt->addEdge(i, i2);
   }
   const TWD::Graph& g = conf.do_td_contract ? *primal_alt : primal;
+  if (g.numNodes() == 0) return 0;
 
   // run FlowCutter
   verb_print(2, "[td-cmp] FlowCutter is running...");
@@ -1224,6 +1230,7 @@ FF Counter::outer_count() {
   compiler->finalize_and_write(/*unsat=*/false);
   collect_bce_stats();
   bce = nullptr;
+  print_sweep_stats();
   if (conf.verb && comp_manager) stats.print_short(this, comp_manager->get_cache());
   return cnt;
 }
@@ -1310,12 +1317,162 @@ bool Counter::chrono_check() {
   if (data.bOnlyOneLitFromHighest) {
     debug_print(COLYEL2  << __func__ << " -- going back to " << data.nHighestLevel-1
         << " curlev: " << dec_level());
-    go_back_to(data.nHighestLevel-1);
+    go_back_to(data.nHighestLevel-1, true);
     VERBOSE_DEBUG_DO(print_trail());
     debug_print(COLYEL2  << __func__ << " went back -- now Declev: " << dec_level());
     return true;
   }
   return false;
+}
+
+void Counter::print_sweep_stats() const {
+  const auto& s = sweep_stats;
+  if (conf.frontier_states > 0)
+    verb_print(1, "[sweep] residual attempts " << s.attempts << " finished " << s.finished
+      << " (words " << s.word << " buckets " << s.bucket << " sparse " << s.sparse << ")"
+      << " peak states " << s.peak << " T: " << s.cpu);
+  if (conf.grouped_sweep)
+    verb_print(1, "[sweep] grouped residual attempts " << s.grouped_attempts
+      << " finished " << s.grouped_finished);
+}
+
+// Count the cache miss selected by the parent with a bounded table method
+// instead of branching on it. Returns true if the component was counted.
+// Only unweighted components over independent variables, of at most 62
+// variables, qualify; each method gives up as soon as it exceeds its bound.
+bool Counter::try_sweep() {
+  auto& parent = decisions.top();
+  const auto index = parent.curr_remain_comp();
+  const auto& comp = *comp_manager->at(index);
+  const unsigned n = comp.nVars();
+  if (weighted() || compiler->active() || n < 4 || n > 62) return false;
+  const unsigned num_clauses = comp.num_long_cls() + comp.num_bin_cls()/2;
+  const bool sweep_enabled = conf.frontier_states > 0 && int(n) >= conf.frontier_min_vars;
+  bool wide_candidate = sweep_enabled && num_clauses > 64 && num_clauses <= 256;
+  if (wide_candidate && wide_skip) {
+    --wide_skip;
+    wide_candidate = false;
+  }
+  const bool sweep_candidate = (sweep_enabled && num_clauses <= 64) || wide_candidate;
+  bool grouped_candidate = conf.grouped_sweep && sweep_stats.grouped_attempts < 32 && num_clauses > 64;
+  if (!sweep_candidate && !grouped_candidate) return false;
+  const auto* vars = comp.vars_begin();
+  if (vars[n-1] >= indep_support_end) return false;
+  if (!dynamic_cast<const ArjunNS::FMpz*>(two.get())) return false;
+
+  const bool adaptive = conf.grouped_sweep == 2;
+  if (adaptive && grouped_candidate) {
+    if (grouped_skip) {
+      --grouped_skip;
+      grouped_candidate = false;
+      if (!sweep_candidate) return false;
+    } else {
+      // Count snapshot failures too. Reset the backoff on a completed sweep.
+      ++sweep_stats.grouped_attempts;
+      grouped_misses = std::min(4u, grouped_misses + 1);
+      grouped_skip = (1u << (grouped_misses - 1)) - 1;
+    }
+  }
+  struct SweepTimer {
+    double& total;
+    double start;
+    ~SweepTimer() { total += cpu_time() - start; }
+  } timer{sweep_stats.cpu, cpu_time()};
+  // Wide components rarely finish: back off exponentially after each failure
+  if (wide_candidate) {
+    wide_misses = std::min(7u, wide_misses + 1);
+    wide_skip = (1u << (wide_misses - 1)) - 1;
+  }
+  if (num_clauses > 65536) return false; // bound the snapshot's memory
+  std::vector<frontier::Clause> clauses;
+  clauses.reserve(num_clauses);
+  auto add_lit = [&](frontier::Clause& clause, Lit l) {
+    auto* p = std::lower_bound(vars, vars+n, l.var());
+    if (p == vars+n || *p != l.var()) return false;
+    (l.sign() ? clause.neg : clause.pos) |= frontier::bit(p-vars);
+    return true;
+  };
+  const auto& analyzer = comp_manager->get_ana();
+  for (auto it = comp.cls_begin(); *it != sentinel; ++it) {
+    frontier::Clause clause;
+    for (Lit l : analyzer.frontier_clause(*it)) {
+      if (val(l) == T_TRI) return false;
+      if (val(l) == X_TRI && !add_lit(clause, l)) return false;
+    }
+    clauses.push_back(clause);
+  }
+  for (unsigned i=0; i<n; ++i) {
+    if (val(vars[i]) != X_TRI) return false;
+    for (bool sign : {false,true}) {
+      Lit l(vars[i],sign);
+      for (const auto& w : watches[l].binaries) {
+        if (!w.irred() || val(w.lit()) == T_TRI) continue;
+        if (val(w.lit()) != X_TRI) return false;
+        if (w.lit() < l) continue;
+        frontier::Clause clause;
+        if (!add_lit(clause,l) || !add_lit(clause,w.lit())) return false;
+        clauses.push_back(clause);
+      }
+    }
+  }
+  // The analyzer counts binary incidences at both endpoints. Decline if
+  // its active component and our watch-based view disagree (e.g. BCE).
+  if (clauses.size() != num_clauses) return false;
+  auto finish = [&](const mpz_class &value) {
+    FF count = std::make_unique<ArjunNS::FMpz>(value);
+    if (conf.do_use_cache) comp_manager->save_count(index, count);
+    if (value != 0) parent.include_solution(count);
+    else parent.mark_branch_unsat();
+    parent.next_unproc_comp();
+  };
+  if (grouped_candidate) {
+    if (!adaptive) ++sweep_stats.grouped_attempts;
+    grouped::Factors groups;
+    bool eligible = true;
+    for (auto clause : clauses) {
+      std::vector<int> lits;
+      for (unsigned v = 0; v < n; ++v) {
+        if (clause.pos & frontier::bit(v)) lits.push_back(int(v + 1));
+        if (clause.neg & frontier::bit(v)) lits.push_back(-int(v + 1));
+      }
+      if (!groups.add(lits)) {
+        eligible = false;
+        break;
+      }
+    }
+    if (eligible) {
+      if (auto result = grouped::solve(groups, n, adaptive)) {
+        grouped_misses = grouped_skip = 0;
+        ++sweep_stats.grouped_finished;
+        finish(*result);
+        return true;
+      }
+    }
+  }
+  if (!sweep_candidate) return false;
+  ++sweep_stats.attempts;
+  const unsigned limit = conf.frontier_states;
+  auto result = frontier::word_count(n, clauses, limit);
+  if (result) ++sweep_stats.word;
+  if (!result && conf.frontier_bucket && (wide_candidate || n >= 20)) {
+    result = frontier::bucket_count(n, clauses, limit);
+    if (result) ++sweep_stats.bucket;
+  }
+  if (!result && num_clauses <= 64) {
+    // On binary-heavy residuals many open clauses can share one boundary
+    // variable. The assignment bound makes that visible to the orderer.
+    const bool variable_bound = n >= 20 && 2*std::count_if(clauses.begin(), clauses.end(),
+        [](auto c) { return std::popcount(c.vars()) == 2; }) >= num_clauses;
+    result = frontier::sweep(n, clauses, limit, sweep_stats.peak, variable_bound);
+    if (result) ++sweep_stats.sparse;
+  }
+  if (!result) return false;
+  ++sweep_stats.finished;
+  if (wide_candidate) wide_misses = wide_skip = 0;
+  mpz_class exact;
+  mpz_import(exact.get_mpz_t(), 1, 1, sizeof(*result), 0, 0, &*result);
+  finish(exact);
+  return true;
 }
 
 void Counter::count_loop() {
@@ -1332,11 +1489,17 @@ void Counter::count_loop() {
     // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
-      // weighted zero != UNSAT, but an UNSAT comp here would pollute the cache
-      if (decisions.top().branch_is_zero()) {
+      // weighted zero != UNSAT, but an UNSAT comp here would pollute the cache.
+      // --compile must still compile these comps: the circuit can't depend on weights.
+      if (decisions.top().branch_is_zero() && !compiler->active()) {
         is_indep = false;
         if (run_sat_solver(state, true)) continue;
         goto start11;
+      }
+      if ((conf.frontier_states > 0 || (conf.grouped_sweep && sweep_stats.grouped_attempts < 32))
+          && try_sweep()) {
+        if (decisions.top().branch_found_unsat()) goto backtrack;
+        continue;
       }
       decide_lit();
       if (!is_indep) {
@@ -1361,7 +1524,11 @@ void Counter::count_loop() {
       // (chrono_check may have resolved without updating state)
       if (state != BACKTRACK && state != PROCESS_COMPONENT) state = RESOLVED;
       if (state == BACKTRACK) goto backtrack;
-      if (state == RESOLVED && restart_if_needed()) goto end;
+      if (state == RESOLVED) {
+        const RstRet r = restart_if_needed();
+        if (r == RstRet::end) goto end;
+        if (r == RstRet::backtrack) goto backtrack;
+      }
 
       if (state != PROCESS_COMPONENT && state != RESOLVED) {
         cerr << "ERROR: state: " << state << endl;
@@ -1544,7 +1711,7 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
     if (!ret) {
       score = 1e5;
       reactivate_comps_and_backtrack_trail();
-      decisions.top().zero_out_branch_sol();
+      decisions.top().reset_act_branch();
       decisions.top().var = orig_var;
       return score;
     }
@@ -1554,8 +1721,9 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
     reactivate_comps_and_backtrack_trail();
     // When weighted, unset_lit() multiplies the weight of every lit it unsets
     // into this level's count. Right for a real backtrack, but this was only
-    // a probe and the level has counted nothing yet: wipe it.
-    decisions.top().zero_out_branch_sol();
+    // a probe and the level has counted nothing yet: wipe it. With --compile a
+    // zero weight is multiplied in too, marking the branch zero: reset that too.
+    decisions.top().reset_act_branch();
   }
   decisions.top().var = orig_var;
   verb_print(1, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]
@@ -1682,16 +1850,21 @@ static double luby(double y, int x){
   return pow(y, seq);
 }
 
-bool Counter::restart_if_needed() {
-  if (!appmc_timeout_fired && conf.max_num_rst > 0 && (int32_t)stats.num_restarts > conf.max_num_rst)
-    return false;
-  if (!appmc_timeout_fired && (!conf.do_restart || td_width < 20)) return false;
-
-  bool restart = false;
+Counter::RstRet Counter::restart_if_needed() {
   if (appmc_timeout_fired) {
     verb_print(1, "[rst] AppMC timeout fired. Restarting.");
-    restart = true;
+    restart_with_cubes();
+    return RstRet::end;
   }
+  if (!restart_due()) return RstRet::none;
+  return restart_in_search();
+}
+
+bool Counter::restart_due() const {
+  if (conf.max_num_rst > 0 && (int32_t)stats.num_restarts > conf.max_num_rst) return false;
+  if (!conf.do_restart || td_width < conf.rst_min_tw) return false;
+
+  bool restart = false;
 
   // Conflicts, luby
   if (conf.restart_type == 7) {
@@ -1730,7 +1903,12 @@ bool Counter::restart_if_needed() {
     }
   }
 
-  if (!restart) return false;
+  return restart;
+}
+
+// The AppMC fallback: what was counted becomes cubes, they are blocked, and
+// the counter (and its cache) is rebuilt
+void Counter::restart_with_cubes() {
   verb_print(2, "************* Restarting.  **************");
   verb_print(2, "Num decisions since last restart: "
     << stats.decisions-stats.last_restart_num_decisions << endl
@@ -1788,7 +1966,66 @@ bool Counter::restart_if_needed() {
   assert(ret && "never UNSAT");
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   stats.num_restarts++;
+  readjust_for_restart();
+}
 
+// Backtracks to level 0 inside the search, keeping every finished comp's
+// cached count. Abandoning a branch normally drops all that was counted in
+// it: if a comp not yet counted there is UNSAT, learnt clauses over lits
+// outside a finished comp may have pruned some of its models. With a model of
+// the trail's decisions, every comp not yet counted is SAT, so no cached count
+// is too low. If CMS says UNSAT, the failed assumptions show the branch of
+// their highest level is UNSAT: we go there, and the caller backtracks out of
+// it as if a conflict had shown it.
+Counter::RstRet Counter::restart_in_search() {
+  const double my_time = cpu_time();
+  stats.last_restart_num_conflicts = stats.conflicts;
+  stats.last_restart_num_decisions = stats.decisions;
+  stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups;
+
+  vector<CMSat::Lit> ass;
+  for (const auto& l: trail)
+    if (var(l).decision_level > 0 && var(l).ante.isNull()) ass.push_back(ganak_to_cms_lit(l));
+  sat_solver->set_max_confl(conf.rst_sat_confl);
+  const auto sat = sat_solver->solve(&ass);
+  if (sat == CMSat::l_False) {
+    int32_t lev = 0;
+    for (const auto& l: sat_solver->get_conflict())
+      lev = std::max(lev, var(l.var()+1).decision_level);
+    release_assert(lev > 0 && "the formula is SAT");
+    verb_print(2, "[rst] trail UNSAT, highest lev in core: " << lev
+        << " dec lev: " << dec_level() << " core sz: " << sat_solver->get_conflict().size());
+    stats.rst_unsat++;
+    go_back_to(lev);
+    decisions.top().mark_branch_unsat();
+    stats.rst_time += cpu_time() - my_time;
+    return RstRet::backtrack;
+  }
+  if (sat == CMSat::l_Undef) {
+    stats.rst_skip_sat++;
+    stats.rst_time += cpu_time() - my_time;
+    return RstRet::none;
+  }
+
+  stats.num_restarts++;
+  readjust_for_restart();
+  verb_print(2, "[rst] restarting from lev " << dec_level() << " confl: " << stats.conflicts);
+  stats.rst_levels_undone += dec_level();
+  while (dec_level() > 0) {
+    reactivate_comps_and_backtrack_trail(false);
+    decisions.pop_back();
+  }
+  decisions.top().reset_act_branch();
+  comp_manager->clean_remain_comps_of(decisions.top());
+  decisions.top().reset_remain_comps();
+  bool const ret = propagate();
+  assert(ret && "the trail is a subset of a propagated one");
+  CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
+  stats.rst_time += cpu_time() - my_time;
+  return RstRet::none;
+}
+
+void Counter::readjust_for_restart() {
   // Decay TD weight so stale scores have less influence after each restart
   if (conf.td_weight_restart_decay < 1.0) {
     // The floor must never RAISE the weight: it may have been set below the
@@ -1806,7 +2043,6 @@ bool Counter::restart_if_needed() {
   }
   verb_print(2, "[rst] new config. decide: " << conf.decide
     << " polar_type: " << conf.polar_type);
-  return true;
 }
 
 // returns cube in `c`. Uses LEFT/RIGHT branch
@@ -2223,6 +2459,7 @@ RetState Counter::backtrack() {
     compiler->build_level_node();
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
+    const FF tot = decisions.top().total_model_count();
     if (conf.do_use_cache) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";
@@ -2230,7 +2467,7 @@ RetState Counter::backtrack() {
       cout << endl;
 #endif
       if (weighted()) {
-        FF cnt = decisions.top().total_model_count()->dup();
+        FF cnt = tot->dup();
         all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
           if (val(*it) != X_TRI && var(*it).decision_level < dec_level()) {
             Lit const l(*it, val(*it) == T_TRI);
@@ -2244,7 +2481,7 @@ RetState Counter::backtrack() {
         }
         comp_manager->save_count(decisions.top().super_comp(), cnt);
       } else {
-        comp_manager->save_count(decisions.top().super_comp(), decisions.top().total_model_count());
+        comp_manager->save_count(decisions.top().super_comp(), tot);
       }
       compiler->record_comp_node();
     }
@@ -2256,7 +2493,7 @@ RetState Counter::backtrack() {
 #endif
     // so the parent's cache cleanup runs
     if (decisions.top().comp_unsat()) (decisions.end() - 2)->mark_branch_unsat();
-    else (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
+    else (decisions.end() - 2)->include_solution(tot);
     compiler->attach_to_parent();
     decisions.pop_back();
 
@@ -2361,7 +2598,7 @@ void Counter::print_trail(bool check_entail, bool check_anything) const {
   if (check_anything) check_trail(check_entail);
 }
 
-void Counter::go_back_to(int32_t backj) {
+void Counter::go_back_to(int32_t backj, bool may_keep) {
   debug_print("going back to lev: " << backj << " dec level now: " << dec_level());
   while(dec_level() > backj) {
     debug_print("at dec lit: " << top_dec_lit() << " lev: " << dec_level()
@@ -2376,7 +2613,14 @@ void Counter::go_back_to(int32_t backj) {
     decisions.top().zero_out_branch_sol();
     compiler->branch_reset();
     if (!sat_mode()) {
-      comp_manager->remove_cache_pollutions_of(decisions.top());
+      if (may_keep && dec_level() == backj && conf.bj_defer) {
+        // Its finished comps stay valid unless this branch turns out UNSAT,
+        // and then removing its pollution removes them too
+        const CacheEntryID from = comp_manager->pollution_start_of(decisions.top());
+        auto& kf = decisions.top().kept_from;
+        if (from != 0 && (kf == 0 || from < kf)) kf = from;
+        stats.bj_deferred++;
+      } else comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
       decisions.top().reset_remain_comps();
     }
@@ -2529,13 +2773,22 @@ RetState Counter::resolve_conflict() {
   bool const flipped_declit = (
       uip_clause[0].var() == decisions.at(backj).var
            && lev_to_set == backj-1);
-  if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
+  // --compile: a flip sets the lit at backj-1 without resetting that level, so
+  // what it implies in a sibling comp not yet searched is on no arc (issue #132)
+  if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)
+      || (compiler->active() && !sat_mode())) {
     debug_print("---- NOT FLIPPED DECLIT ----------");
     VERBOSE_DEBUG_DO(print_trail(true, false));
     VERBOSE_DEBUG_DO(print_conflict_info());
     debug_print("Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
       << " current lev: " << dec_level());
-    go_back_to(backj-1);
+    // --compile: no chronological backtracking. A lit asserted below the
+    // current level would be recorded both by the children already compiled
+    // (which derived it themselves) and by its own level: not decomposable.
+    // Backjumping to its level resets that branch, so it is compiled once.
+    // (Also in SAT mode: a lit it asserts below its start would be lost too.)
+    if (compiler->active()) go_back_to(lev_to_set);
+    else go_back_to(backj-1, !sat_mode());
     auto ant = add_uip_confl_cl(uip_clause);
     set_lit(uip_clause[0], lev_to_set, ant);
     VERBOSE_DEBUG_DO(print_trail());
@@ -2856,9 +3109,9 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
     if (!rem) cls[j++] = off;
   }
 
+  cls.resize(j);
   // We didn't timeout, reset vivified flag.
   if (v_tout > 0) for(const auto& off: cls) alloc->ptr(off)->vivified = 0;
-  cls.resize(j);
 }
 
 void Counter::vivif_setup() {
@@ -2868,12 +3121,18 @@ void Counter::vivif_setup() {
   v_levs.resize(nVars()+1, -1);
   v_values.clear();
   v_values.resize(nVars()+1, X_TRI);
+  v_reasons.assign(nVars()+1, Antecedent());
+  v_reason_red.assign(nVars()+1, 0);
+  v_l0_red.assign(nVars()+1, 0);
+  v_seen.assign(nVars()+1, 0);
   v_qhead = 0;
 
   // Set up units
   v_trail.clear();
-  for(const auto& l: trail) if (var(l).decision_level == 0) v_enqueue(l);
+  for(const auto& l: unit_cls) seen[l.raw()] = 1;
+  for(const auto& l: trail) if (var(l).decision_level == 0) v_enqueue(l, Antecedent(), !seen[l.raw()]);
   for(const auto& l: unit_cls) if (v_val(l) == X_TRI) v_enqueue(l);
+  for(const auto& l: unit_cls) seen[l.raw()] = 0;
   bool const ret = v_propagate();
   assert(ret);
 }
@@ -2881,6 +3140,10 @@ void Counter::vivif_setup() {
 bool Counter::vivify_all(bool force, bool only_irred) {
   VERY_SLOW_DEBUG_DO(check_trail(true, true));
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return false;
+#ifdef CHECK_VIVIF
+  check_vivif_state("before");
+  VivifSnap const vsnap = vivif_snap();
+#endif
 
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   double const my_time = cpu_time();
@@ -2923,6 +3186,11 @@ bool Counter::vivify_all(bool force, bool only_irred) {
   if (force) v_tout *= vivif_irred_budget_force_mult;
   vivify_cls(long_irred_cls);
   bool const tout_irred = (v_tout <= 0);
+  if (!v_promoted.empty()) {
+    long_irred_cls.insert(long_irred_cls.end(), v_promoted.begin(), v_promoted.end());
+    std::erase_if(long_red_cls, [this](ClauseOfs o) { return !alloc->ptr(o)->red; });
+    v_promoted.clear();
+  }
   verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpu_time()-my_time));
 
   bool tout_red = false;
@@ -2964,6 +3232,7 @@ bool Counter::vivify_all(bool force, bool only_irred) {
       << " T: " << (cpu_time()-my_time));
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   VERY_SLOW_DEBUG_DO(check_trail(true, true));
+  CHECK_VIVIF_DO(check_vivif_state("after"); check_vivif_vs_snap(vsnap));
   return (stats.vivif_cl_minim > last_vivif_cl_minim);
 }
 
@@ -3108,6 +3377,220 @@ bool Counter::propagation_correctness_of_vivified(const T2& cl) const {
   });
 }
 
+#ifdef CHECK_VIVIF
+Counter::VivifSnap Counter::vivif_snap() const {
+  VivifSnap s;
+  s.trail = trail;
+  for(const auto& l: trail) {
+    s.levs.push_back(var(l).decision_level);
+    s.antes.push_back(var(l).ante);
+  }
+  for(const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    s.irred.emplace_back(cl.begin(), cl.end());
+  }
+  all_lits(i) {
+    Lit const lit(i/2, i%2);
+    for(const auto& b: watches[lit].binaries)
+      if (b.irred() && lit < b.lit()) s.irred.push_back({lit, b.lit()});
+  }
+  for(const auto& l: unit_cls) s.irred.push_back({l});
+  for(const auto& off: long_red_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    s.red.emplace_back(cl.begin(), cl.end());
+  }
+  for(auto* v: {&s.irred, &s.red}) {
+    for(auto& c: *v) std::sort(c.begin(), c.end());
+    std::sort(v->begin(), v->end());
+  }
+  return s;
+}
+
+// Static check of the search state: lists, watches, reasons, and that the
+// watches stay valid after popping any number of levels, given that a pop
+// re-propagates only the kept lits from the popped decision's trail position on.
+void Counter::check_vivif_state(const char* where) const {
+  auto lit_to_str = [](Lit l) { std::ostringstream o; o << l; return o.str(); };
+  auto fail = [&](const string& msg, const Clause* cl = nullptr) {
+    cerr << "ERROR [check-vivif " << where << "] " << msg
+      << " dec_level: " << dec_level() << " conflicts: " << stats.conflicts << endl;
+    if (cl) for(const auto& l: *cl)
+      cerr << "  lit " << l << " val: " << lit_val_str(l)
+        << " lev: " << var(l).decision_level << " sublev: " << var(l).sublevel << endl;
+    release_assert(false);
+  };
+  if (decisions.empty()) return;
+
+  std::unordered_map<ClauseOfs, uint32_t> watched; // bit0: cl[0] watched, bit1: cl[1]
+  auto chk_list = [&](const vector<ClauseOfs>& cls, bool red) {
+    for(const auto& off: cls) {
+      const Clause& cl = *alloc->ptr(off);
+      if (cl.freed) fail("freed clause in list, off: " + std::to_string(off));
+      if (cl.sz < 3) fail("short clause in long list", &cl);
+      if (cl.red != red) fail("red flag mismatch", &cl);
+      if (!watched.emplace(off, 0).second) fail("clause twice in lists", &cl);
+      for(uint32_t i = 0; i < cl.sz; i++) {
+        if (cl[i].var() == 0 || cl[i].var() > nVars()) fail("bad var in clause", &cl);
+        for(uint32_t j = i+1; j < cl.sz; j++)
+          if (cl[i].var() == cl[j].var()) fail("var twice in clause", &cl);
+      }
+    }
+  };
+  chk_list(long_irred_cls, false);
+  chk_list(long_red_cls, true);
+
+  all_lits(i) {
+    Lit const lit(i/2, i%2);
+    for(const auto& w: watches[lit].watch_list_) {
+      auto it = watched.find(w.ofs);
+      if (it == watched.end()) fail("watched clause not in lists, off: " + std::to_string(w.ofs));
+      const Clause& cl = *alloc->ptr(w.ofs);
+      uint32_t const bit = (cl[0] == lit) ? 1 : ((cl[1] == lit) ? 2 : 0);
+      if (bit == 0) fail("clause watched by lit " + lit_to_str(lit) + " not at pos 0/1", &cl);
+      if (it->second & bit) fail("clause watched twice by " + lit_to_str(lit), &cl);
+      it->second |= bit;
+      if (std::find(cl.begin(), cl.end(), w.blckLit) == cl.end())
+        fail("blocker " + lit_to_str(w.blckLit) + " not in clause", &cl);
+    }
+  }
+  for(const auto& [off, bits]: watched)
+    if (bits != 3) fail("clause not watched by both cl[0] and cl[1]", alloc->ptr(off));
+
+  std::map<std::tuple<uint32_t, uint32_t, bool>, int64_t> bin_bal;
+  all_lits(i) {
+    Lit const lit(i/2, i%2);
+    for(const auto& b: watches[lit].binaries) {
+      if (b.lit().var() == lit.var()) fail("binary on one var: " + lit_to_str(lit));
+      auto const lo = std::min(lit.raw(), b.lit().raw()), hi = std::max(lit.raw(), b.lit().raw());
+      bin_bal[{lo, hi, b.red()}] += (lit.raw() == lo) ? 1 : -1;
+    }
+  }
+  for(const auto& [k, bal]: bin_bal) if (bal != 0)
+    fail("binary watched asymmetrically (or red flags differ): "
+        + lit_to_str(Lit::toLit(std::get<0>(k))) + " " + lit_to_str(Lit::toLit(std::get<1>(k))));
+
+  if (qhead != trail.size()) fail("qhead not at end of trail");
+  for(uint32_t pos = 0; pos < trail.size(); pos++) {
+    Lit const l = trail[pos];
+    const auto& vd = var(l);
+    if (val(l) != T_TRI) fail("trail lit not true: " + lit_to_str(l));
+    if (vd.sublevel != pos) fail("sublevel != trail pos for " + lit_to_str(l));
+    if (vd.decision_level > dec_level()) fail("too high level: " + lit_to_str(l));
+    if (vd.decision_level == 0) continue;
+    if (vd.ante.isAClause()) {
+      if (!watched.count(vd.ante.as_cl())) fail("reason clause not in lists for " + lit_to_str(l));
+      const Clause& cl = *alloc->ptr(vd.ante.as_cl());
+      bool found = false;
+      for(const auto& l2: cl) {
+        if (l2 == l) {found = true; continue;}
+        if (val(l2) != F_TRI || var(l2).decision_level > vd.decision_level)
+          fail("bad reason clause for " + lit_to_str(l), &cl);
+      }
+      if (!found) fail("reason clause lacks " + lit_to_str(l), &cl);
+    } else if (vd.ante.isALit()) {
+      Lit const o = vd.ante.as_lit();
+      if (val(o) != F_TRI || var(o).decision_level > vd.decision_level)
+        fail("bad binary reason for " + lit_to_str(l));
+    }
+  }
+
+  // Full state: nothing unit, nothing conflicting.
+  all_lits(i) {
+    Lit const lit(i/2, i%2);
+    if (val(lit) != F_TRI) continue;
+    for(const auto& b: watches[lit].binaries)
+      if (val(b.lit()) != T_TRI) fail("binary unit/conflict: " + lit_to_str(lit) + " " + lit_to_str(b.lit()));
+  }
+  auto chk_prop = [&](const vector<ClauseOfs>& cls) {
+    for(const auto& off: cls) {
+      const Clause& cl = *alloc->ptr(off);
+      uint32_t undef = 0;
+      bool sat = false;
+      for(const auto& l: cl) { if (val(l) == T_TRI) sat = true; else if (val(l) == X_TRI) undef++; }
+      if (!sat && undef <= 1) fail("long clause unit/conflict", &cl);
+    }
+  };
+  chk_prop(long_irred_cls);
+  chk_prop(long_red_cls);
+
+  // After popping levels >= k, the lits before decision k's trail pos stay
+  // propagated. A false watch among them needs a true lit at level < k.
+  vector<uint32_t> pos_of_dec(dec_level()+2, trail.size());
+  for(int32_t k = 1; k <= dec_level(); k++) {
+    uint32_t const dv = decisions[k].var;
+    // The flipped decision may since have been implied at a lower level.
+    // Backtracking still starts the pop at its trail pos.
+    if (dv == 0 || values[Lit(dv, true)] == X_TRI) fail("decision var unassigned at level " + std::to_string(k));
+    pos_of_dec[k] = var_data[dv].sublevel;
+  }
+  for(int32_t k = 1; k <= dec_level()+1; k++) {
+    uint32_t const p = pos_of_dec[k];
+    for(uint32_t pos = 0; pos < p; pos++) if (var(trail[pos]).decision_level >= k)
+      fail("lit before decision " + std::to_string(k) + " has level >= k: " + lit_to_str(trail[pos]));
+    auto chk_cls = [&](const vector<ClauseOfs>& cls) {
+      for(const auto& off: cls) {
+        const Clause& cl = *alloc->ptr(off);
+        bool bad_watch = false;
+        for(uint32_t w = 0; w < 2; w++)
+          if (val(cl[w]) == F_TRI && var(cl[w]).sublevel < p) bad_watch = true;
+        if (!bad_watch) continue;
+        bool sat = std::any_of(cl.begin(), cl.end(), [&](Lit l) {
+            return val(l) == T_TRI && var(l).decision_level < k; });
+        if (!sat) fail("propagated false watch without true lit below level "
+            + std::to_string(k) + " (popping would miss a propagation)", &cl);
+      }
+    };
+    chk_cls(long_irred_cls);
+    chk_cls(long_red_cls);
+  }
+}
+
+// Same trail and reasons as before, and the irred formula is equivalent.
+void Counter::check_vivif_vs_snap(const VivifSnap& s) {
+  auto lit_to_str = [](Lit l) { std::ostringstream o; o << l; return o.str(); };
+  auto lits_to_str = [](const vector<Lit>& c) { std::ostringstream o; for(const auto& l: c) o << l << " "; return o.str(); };
+  auto same_ante = [](const Antecedent& a, const Antecedent& b) {
+    if (a.isNull() || b.isNull()) return a.isNull() && b.isNull();
+    if (a.isAClause() != b.isAClause()) return false;
+    return a.isAClause() ? a.as_cl() == b.as_cl() : a.as_lit() == b.as_lit();
+  };
+  auto fail = [&](const string& msg) {
+    cerr << "ERROR [check-vivif snap] " << msg << endl;
+    release_assert(false);
+  };
+  if (s.trail != trail) fail("trail changed");
+  for(uint32_t i = 0; i < trail.size(); i++) {
+    if (var(trail[i]).decision_level != s.levs[i]) fail("level changed: " + lit_to_str(trail[i]));
+    if (!same_ante(var(trail[i]).ante, s.antes[i])) fail("reason changed: " + lit_to_str(trail[i]));
+  }
+  VivifSnap const now = vivif_snap();
+  vector<vector<Lit>> added, removed;
+  std::set_difference(now.irred.begin(), now.irred.end(), s.irred.begin(), s.irred.end(),
+      std::back_inserter(added));
+  std::set_difference(s.irred.begin(), s.irred.end(), now.irred.begin(), now.irred.end(),
+      std::back_inserter(removed));
+  for(const auto& c: added) if (!is_implied(c)) fail("new irred clause not implied: " + lits_to_str(c));
+  vector<vector<Lit>> added_red;
+  std::set_difference(now.red.begin(), now.red.end(), s.red.begin(), s.red.end(),
+      std::back_inserter(added_red));
+  for(const auto& c: added_red) if (!is_implied(c)) fail("new red clause not implied: " + lits_to_str(c));
+  if (removed.empty()) return;
+  CMSat::SATSolver s2;
+  s2.new_vars(nVars()+1);
+  vector<CMSat::Lit> tmp;
+  for(const auto& c: now.irred) {
+    tmp.clear();
+    for(const auto& l: c) tmp.push_back(ganak_to_cms_lit(l));
+    s2.add_clause(tmp);
+  }
+  for(const auto& c: removed) {
+    tmp.clear();
+    for(const auto& l: c) tmp.push_back(~ganak_to_cms_lit(l));
+    if (s2.solve(&tmp) != CMSat::l_False) fail("removed irred clause not implied by the new formula: " + lits_to_str(c));
+  }
+}
+#endif
+
 // Returns TRUE if we can remove the clause
 bool Counter::vivify_cl(const ClauseOfs off) {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
@@ -3138,18 +3621,20 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   debug_print("vivifying cl offs: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
 
-  v_tmp.push_back(v_tmp2[0]);
-  v_tmp.push_back(v_tmp2[1]);
+  // The clause itself is ignored, otherwise it would just propagate its own
+  // last literal. If nothing conflicts, every literal ends up false, so the
+  // clause itself is the conflict.
+  v_ignore = off;
   v_enqueue(v_tmp2[0].neg());
   v_enqueue(v_tmp2[1].neg());
   bool ret = v_propagate();
+  Lit true_lit = NOT_A_LIT;
   if (ret) {
     for(uint32_t i = 2; i < v_tmp2.size(); i++) {
       const auto& l = v_tmp2[i];
       debug_print("Vivif lit l: " << l << " val: " << val_to_str(v_val(l)));
-      if (v_val(l) == T_TRI) {v_tmp.push_back(l);break;}
+      if (v_val(l) == T_TRI) {true_lit = l; break;}
       if (v_val(l) == F_TRI) continue;
-      v_tmp.push_back(l);
       v_enqueue(l.neg());
       ret = v_propagate();
       if (!ret) {
@@ -3157,7 +3642,31 @@ bool Counter::vivify_cl(const ClauseOfs off) {
         break;
       }
     }
+    if (ret && true_lit == NOT_A_LIT) {
+      v_confl = Antecedent(off);
+      v_confl_lit = NOT_A_LIT;
+      v_confl_red = cl.red;
+    }
   }
+  for(const auto& l: v_tmp2) seen[l.raw()] = 1;
+  // The earliest true lit depends on the fewest decisions
+  if (true_lit != NOT_A_LIT && v_levs[true_lit.var()] == 1) {
+    for(uint32_t i = v_backtrack_to; i < v_trail.size(); i++)
+      if (seen[v_trail[i].raw()]) {true_lit = v_trail[i]; break;}
+  }
+  v_analyze_into_tmp(true_lit);
+  for(const auto& l: v_tmp2) seen[l.raw()] = 0;
+  if (v_sub.found && (cl.red || !v_sub.l0_red)) {
+    v_ignore = std::numeric_limits<ClauseOfs>::max();
+    v_backtrack();
+    v_del_subsumed(off);
+    return true;
+  }
+  v_ignore = std::numeric_limits<ClauseOfs>::max();
+  // A unit can't be added mid-search; keep it 2-long.
+  if (v_tmp.size() == 1) stats.vivif_unit_dropped++;
+  for(uint32_t i = 0; i < 2 && v_tmp.size() < 2; i++)
+    if (std::find(v_tmp.begin(), v_tmp.end(), v_tmp2[i]) == v_tmp.end()) v_tmp.push_back(v_tmp2[i]);
   v_backtrack();
   VERBOSE_DEBUG_DO(cout << "new vivified CL offs: " << off << endl; print_cl(v_tmp));
   uip_clause.clear();
@@ -3203,14 +3712,9 @@ bool Counter::vivify_cl(const ClauseOfs off) {
         // cannot propagate!
         assert(false);
       }
-      for(uint32_t v = 1; v < var_data.size(); v++) {
-        auto& vdat = var_data[v];
-        if (vdat.ante.isAClause() && vdat.ante.as_cl() == off) {
-          assert(v == cl[0].var() || v == cl[1].var());
-          Lit const other_lit = (v == cl[0].var()) ? cl[1] : cl[0];
-          vdat.ante = Antecedent(other_lit);
-        }
-      }
+      // Reasons are never vivified (they are currently_propagating).
+      SLOW_DEBUG_DO(for(const auto& l: trail)
+          assert(!(var(l).ante.isAClause() && var(l).ante.as_cl() == off)));
       alloc->clause_free(off);
       fun_ret = true;
     } else {
@@ -3226,6 +3730,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     ret = v_propagate();
     assert(ret);
   } else {
+    if (removable != 0) stats.vivif_cl_rejected++;
     VERBOSE_DEBUG_DO(cout << "Can't vivify." << endl);
   }
 
@@ -3234,10 +3739,122 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   return fun_ret;
 }
 
-void Counter::v_enqueue(const Lit l) {
+// Fills v_tmp with the clause lits whose (negated) decisions the conflict, or
+// the implication of true_lit, depends on. The candidate's lits must be marked
+// in seen; sets v_sub.
+void Counter::v_analyze_into_tmp(const Lit true_lit) {
+  v_tmp.clear();
+  v_sub = VSub();
+  bool in_cand = true;
+  bool l0_red = false;
+  auto visit = [&](const Lit l, bool mark) {
+    if (v_levs[l.var()] == 0) {
+      // Reason and conflict lits at level 0 are false
+      assert(v_val(l) == F_TRI);
+      l0_red |= v_l0_red[l.var()];
+      return;
+    }
+    if (!seen[l.raw()]) in_cand = false;
+    if (mark) v_seen[l.var()] = 1;
+  };
+  auto done_cl = [&](bool red, bool bin, ClauseOfs off, Lit a, Lit b) {
+    if (!v_sub.found && in_cand && conf.vivif_subs) {
+      v_sub.found = true;
+      v_sub.bin = bin;
+      v_sub.red = red;
+      v_sub.l0_red = l0_red;
+      v_sub.off = off;
+      v_sub.a = a;
+      v_sub.b = b;
+    }
+    in_cand = true;
+    l0_red = false;
+  };
+
+  if (true_lit != NOT_A_LIT) {
+    v_tmp.push_back(true_lit);
+    if (v_levs[true_lit.var()] == 1) v_seen[true_lit.var()] = 1;
+  } else if (v_confl.isAClause()) {
+    if (v_confl.as_cl() == v_ignore) {
+      for(const auto& l: *alloc->ptr(v_confl.as_cl()))
+        if (v_levs[l.var()] == 1) v_seen[l.var()] = 1;
+    } else {
+      for(const auto& l: *alloc->ptr(v_confl.as_cl())) visit(l, true);
+      done_cl(v_confl_red, false, v_confl.as_cl(), NOT_A_LIT, NOT_A_LIT);
+    }
+  } else {
+    visit(v_confl.as_lit(), true);
+    visit(v_confl_lit, true);
+    done_cl(v_confl_red, true, 0, v_confl.as_lit(), v_confl_lit);
+  }
+  for(uint32_t i = v_trail.size(); i-- > v_backtrack_to;) {
+    const Lit t = v_trail[i];
+    if (!v_seen[t.var()]) continue;
+    v_seen[t.var()] = 0;
+    const Antecedent& r = v_reasons[t.var()];
+    if (r.isNull()) {v_tmp.push_back(t.neg()); continue;}
+    visit(t, false);
+    if (r.isALit()) {
+      visit(r.as_lit(), true);
+      done_cl(v_reason_red[t.var()], true, 0, t, r.as_lit());
+    } else {
+      for(const auto& l: *alloc->ptr(r.as_cl())) if (l != t) visit(l, true);
+      done_cl(v_reason_red[t.var()], false, r.as_cl(), NOT_A_LIT, NOT_A_LIT);
+    }
+  }
+}
+
+// The candidate at off is subsumed by v_sub: delete it, and make v_sub irred if
+// the candidate was.
+void Counter::v_del_subsumed(const ClauseOfs off) {
+  Clause& cl = *alloc->ptr(off);
+  if (cl.red) stats.vivif_subs_red++;
+  else stats.vivif_subs_irred++;
+  if (v_sub.bin) {
+    if (!cl.red && v_sub.red) {
+      stats.vivif_subs_promoted++;
+      auto promote = [&](Lit x, Lit y) {
+        auto& bins = watches[x].binaries;
+        auto* it = std::find_if(bins.begin(), bins.end(),
+            [y](const BinCl& b) { return b.lit() == y && b.red(); });
+        assert(it != bins.end());
+        *it = BinCl(y, false);
+      };
+      promote(v_sub.a, v_sub.b);
+      promote(v_sub.b, v_sub.a);
+    }
+  } else {
+    Clause& d = *alloc->ptr(v_sub.off);
+    if (d.red) {
+      if (!cl.red) {
+        stats.vivif_subs_promoted++;
+        d.red = false;
+        v_promoted.push_back(v_sub.off);
+      } else {
+        d.update_lbd(cl.lbd);
+        d.used |= cl.used;
+        d.total_used += cl.total_used;
+      }
+    }
+  }
+  watches[cl[0]].del_c(off);
+  watches[cl[1]].del_c(off);
+  SLOW_DEBUG_DO(for(const auto& l: trail)
+      assert(!(var(l).ante.isAClause() && var(l).ante.as_cl() == off)));
+  alloc->clause_free(off);
+}
+
+void Counter::v_enqueue(const Lit l, Antecedent ante, bool red) {
   debug_print("v-enq: " << l << " lev: " << v_lev);
   assert(v_val(l) == X_TRI);
   v_levs[l.var()] = v_lev;
+  v_reasons[l.var()] = ante;
+  v_reason_red[l.var()] = red;
+  if (v_lev == 0) {
+    if (ante.isALit()) red |= v_l0_red[ante.as_lit().var()];
+    else if (ante.isAClause()) for(const auto& l2: *alloc->ptr(ante.as_cl())) if (l2 != l) red |= v_l0_red[l2.var()];
+    v_l0_red[l.var()] = red;
+  }
   v_trail.push_back(l);
   v_values[l] = T_TRI;
   v_values[l.neg()] = F_TRI;
@@ -3255,10 +3872,13 @@ bool Counter::v_propagate() {
       const auto& l = bincl.lit();
       if (v_val(l) == F_TRI) {
         debug_print("v Conflict from bin.");
+        v_confl = Antecedent(l);
+        v_confl_lit = plit;
+        v_confl_red = bincl.red();
         return false;
       }
       if (v_val(l) == X_TRI) {
-        v_enqueue(l);
+        v_enqueue(l, Antecedent(plit), bincl.red());
         debug_print("v Bin prop: " << l);
       }
     }
@@ -3284,6 +3904,7 @@ bool Counter::v_propagate() {
       if (v_val(it->blckLit) == T_TRI) { *it2++ = *it; continue; }
 
       const auto ofs = it->ofs;
+      if (ofs == v_ignore) { *it2++ = *it; continue; }
       Clause& c = *alloc->ptr(ofs);
       if (c[0] == plit) { std::swap(c[0], c[1]); }
       v_tout--;
@@ -3316,13 +3937,16 @@ bool Counter::v_propagate() {
         *it2++ = *it;
         if (v_val(c[0]) == F_TRI) {
           debug_print("v Conflicting state from norm cl offs: " << ofs);
+          v_confl = Antecedent(ofs);
+          v_confl_lit = NOT_A_LIT;
+          v_confl_red = c.red;
           ret = false;
           it++;
           break;
         }
         assert(v_val(c[0]) == X_TRI);
         debug_print("v prop long");
-        v_enqueue(c[0]);
+        v_enqueue(c[0], Antecedent(ofs), c.red);
       }
     }
     while(it != ws.end()) *it2++ = *it++;
@@ -4714,6 +5338,9 @@ void Counter::init_and_preproc() {
 
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc.get(), long_irred_cls);
+  comp_manager->get_cache_if().set_anchor_source([this](vector<CacheEntryID*>& a) {
+    for (auto& lev : decisions) if (lev.kept_from != 0) a.push_back(&lev.kept_from);
+  });
   bce = comp_manager->get_ana().get_bce();
   for(const auto& l: unit_cls) {
     if (val(l) == X_TRI) set_lit(l, 0);
@@ -4737,6 +5364,7 @@ void my_gbchandler(int pre, bddGbcStat *) {
 
 Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
     fg(_fg->dup())
+    , is_weighted(fg->weighted())
     , conf(_conf)
     , stats(_conf, _fg)
     , mtrand(_conf.seed)
@@ -5064,7 +5692,9 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
   }
   verb_print(2, "Setting weight of " << l << " to " << *w);
   weights[l.raw()] = w->dup();
-  if (w->is_zero()) {
+  // --compile: the circuit must not depend on the weights, so a zero weight
+  // must not strengthen the formula; unset_lit() multiplies the zero in instead.
+  if (w->is_zero() && conf.compile_fname.empty()) {
     add_irred_cl({l.neg()});
     verb_print(3, "Weight is zero, adding clause: " << l.neg());
   }

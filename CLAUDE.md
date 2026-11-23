@@ -70,28 +70,76 @@ cd ../count_fuzzer
 
 `fuzz_session_ganak.sh` runs a longer pre-canned session.
 
-### 2. d-DNNF compilation fuzzer (`tests/ddnnf_fuzz.py`)
+### Vivification fuzzer (after touching vivification / watches / backtracking)
 
-Validates the `--compile` (d-DNNF) feature specifically. It generates random
-CNFs, brute-forces the true model count + model set as an oracle, and checks the
-emitted d4 `.nnf` circuit (parsed/counted by `tests/ddnnf_verify.py`):
+`scripts/fuzz_vivif.py --num 300` runs `build-vivif/ganak` (configured with
+`-DCMAKE_CXX_FLAGS="-DCHECK_VIVIF -DSLOW_DEBUG"`) with vivification forced at
+nearly every conflict on random CNFs, and compares counts with
+`build/ganak --vivif 0`. Failures land in `fuzz-vivif-out/`.
 
-```
-python3 tests/ddnnf_fuzz.py 200            # circuit count == true count, model set
-                                           #   == true models (validates arc literals),
-                                           #   strictly decomposable, faithful as a fn
-python3 tests/ddnnf_fuzz.py 200 --seed N   # reproduce a specific run
-python3 tests/ddnnf_fuzz.py 200 --maxvars 14  # cap var count (oracle is 2^nv, so
-                                           #   this is the main runtime/coverage knob;
-                                           #   also --minvars N)
-```
+### Graph-coloring fuzzer (after touching `src/color_count.hpp`)
 
-`ganak --compile out.nnf in.cnf` writes a faithful d-DNNF.
-`--ddnfcheck 1` makes Ganak cross-check each decision
-level's circuit sub-count against its own count (debugging the compiler). Temp
-files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
-processes can run concurrently. Failing cases are copied to
-`/tmp/ddnnf_fuzz/fail_*.{cnf,nnf}`.
+`--colorcnt` (on by default) counts the colorings directly when the whole
+unweighted, unprojected input is a bit-plane or one-hot graph-coloring
+encoding. count_fuzzer never generates those, so use `scripts/fuzz_color.py
+--num 300`: random graphs in both encodings, some mutated so they must not be
+recognized, random `--colornodes`/`--colordomnodes` budgets, checked against
+`--colorcnt 0`. Failures land in `fuzz-color-out/`.
+
+### Table-counter fuzzer (after touching `src/frontier*.hpp`, `src/grouped_sweep.hpp`, `src/selector_*.hpp` or `Counter::try_sweep`)
+
+`--frontierstates N` counts residual components of at most 62 independent
+vars with bounded table methods, and `--groupedsweep 1|2` counts the whole
+input (and wide residuals) by a sweep over equal-scope clause groups or
+selector blocks. Both are off by default. `scripts/fuzz_sweep.py --num 1000`
+generates CNFs shaped for each method (small k-CNFs, binary-heavy residuals,
+banded clause groups, selector blocks, some projected), runs random budgets
+with and without Arjun, and checks against `--frontierstates 0 --groupedsweep 0`.
+It prints how often each method fired. Failures land in `fuzz-sweep-out/`.
+
+### ganak-model fuzzer (after touching `src/gmodel_*` or the web page's model tab)
+
+`scripts/fuzz_gmodel.py --num 500` builds random models (its own syntax trees,
+printed as `.gm`), and checks against brute-force enumeration with exact
+fractions: `ganak-model --solve`, the page's route (`ganak --compile` + `bdnnf
+count`/`lits`), and mangled
+input (must give errors, never crash). Failures land in `fuzz-gmodel-out/`.
+Uses `build/ganak-model`, `build/ganak`, `build/bdnnf`.
+
+### 2. d-DNNF compilation (`--compile`)
+
+count_fuzzer checks it with `--bdnnf PERC` (default 20% of tests; `--bdnnf 100`
+for all; `--compile` for all, skipping the other counters so it runs several
+times more compile tests per minute): it compiles with ganak, then checks the circuit
+with scalable C++ tools only — `bdnnf verify` (format + every claimed property,
+streamed), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
+checked against the clauses, `--assume` conditioning on random literals, and the
+count under fresh random weights), all against ganak; `bdnnf lits`/`core`/`batch`/`atomic`/`opt`
+against `bdnnf count --assume`/`opt --assume`, `bdnnf twise` (uncovered tuples
+must be UNSAT), `bdnnf stream` against separate runs, `bdnnf enum` for distinct models, as many as counted. `tests/bdnnf.py` is an
+independent Python cross-check, run only on small files. Use `--big` (bigger
+CNFs, 5x timeout) for large circuits. Minimize a failure with
+`./minim_bdnnf.py file.cnf [--check verify|count|sample|structural|weights]`.
+`bdnnf compact` has its own fuzzer, `build/bdnnf-compact-fuzz [--num N]`
+(target `bdnnf-compact-fuzz`): random d-DNNFs full of dead and duplicate
+nodes; checks per-node values under random weights, scopes, no leftover
+duplicates, idempotence, and `bdnnf verify` on input and output. count_fuzzer
+also compacts the compiled circuit in half its BDNNF checks and runs all the
+other checks on the result.
+`./ddnnife_diff.py --num 500` compares `bdnnf` with ddnnife (built in
+`../ddnnife` with `cargo build --release -p ddnnife_cli`, nightly cargo).
+`scripts/bench_bdnnf.py` (about 6 min) compiles a few competition CNFs (full
+ones for most queries, shrunk ones for 2-wise) and compares every `bdnnf`
+query with ddnnife's: times, memory, agreement, t-wise sample sizes.
+d4 (the d-DNNF compiler, for comparisons) is in `../d4-mccomp2026`: build with
+`cd c++/compiler && ./build.sh -j`, then
+`c++/compiler/build/compiler -i in.cnf --compiler.dump-file=out.nnf` writes a
+d4 `.nnf` that ddnnife reads with `-t <nvars>`.
+
+`ganak --compile out.bdnnf in.cnf` writes a faithful d-DNNF (`spec-bdnnf.md`).
+Building with `SLOW_DEBUG` checks every node at emission: decomposability, arc
+literals vs the child, smoothness of unprojected ORs, and each level's count
+against ganak's.
 
 ## Running Tests
 ```
@@ -108,21 +156,15 @@ cd build && lit tests/cnf-files/a.cnf
 
 ### d-DNNF compile tests
 
-`ctest` also runs deterministic d-DNNF compile/cleanup checks. They assert only
-*semantic* invariants of the emitted circuit (model count, model set,
-decomposability, canonical cleaned form) — never the byte-exact `.nnf` — so they
+`ctest` also runs deterministic d-DNNF compile checks. They assert only
+*semantic* invariants of the emitted circuit (count, sampled models,
+properties) — never the byte-exact `.bdnnf` — so they
 do not break when search heuristics reshape the circuit:
 - `tests/cnf-files/ddnnf/*.cnf` — lit fixtures: `--compile`, then
-  `ddnnf-verify` (count/model-set/decomposable), `ddnnf-cleanup`, re-verify the
-  cleaned file `--strict`, and `ddnnf2dot`. `ddnnf-verify` is a C++ binary
-  (`build/ddnnf-verify`, source `src/ddnnf_verify.cpp`); CLI flags
-  `--expect-count`, `--cnf`, `--check-decomposable`, `--strict`; bare
-  invocation prints the structural model count. `tests/ddnnf_verify.py`
-  remains for tiny-N programmatic use (it's what `ddnnf_fuzz.py` imports —
-  `models`, etc.); use the binary for large circuits where Python recursion +
-  dict overhead blow up.
-- ctest target `ddnnf_compile_fuzz` — the property fuzzer runs seeded (so a
-  regression reproduces) and self-checks against a brute-force oracle.
+  `bdnnf verify --expect-count N` (format, count, claimed properties),
+  `bdnnf sample --cnf` (sampled models satisfy the CNF), and `bdnnf dot`.
+  All the tools stream
+  the file, with one var bitset per node at most.
 
 ## Architecture
 
@@ -154,6 +196,13 @@ The counting pipeline flows through these layers:
     throughout solving.
 11. **`structures.hpp`** — Core data structures: `LitWatchList`,
     `DecisionLevel`, `TriValue` (true/false/undef), `LiteralIndexedVector`.
+
+### ganak-model (`src/gmodel_*.cpp`, `spec-ganak-model.md`)
+Probabilistic models to weighted projected CNF (full Tseitin, exact rational
+weights, show set = random vars + names + query vars). `gmodel_parse.cpp` is
+the parser, `gmodel_encode.cpp` the encoder and writers, `gmodel_main.cpp` the CLI with `--solve` (Ganak
+API). Lit tests: `tests/cnf-files/gmodel/`.
+The web page's model tab is `html/src/model.ts`.
 
 ### Field system
 All arithmetic is polymorphic over `CMSat::Field` / `CMSat::FieldGen` (from
@@ -194,6 +243,7 @@ slow when enabled. Turn on the least expensive flag that catches your bug.
 | `ANALYZE_VERBOSE` | `analyze_verb` | Verbose tracing inside component analysis (`comp_analyzer.cpp`) only. | high |
 | `CHECK_TRAIL_ENTAILMENT` | trail-entailment check | The slowest check that does *not* verify counts: re-verifies the whole trail is entailed at each step. Last resort for trail/entailment bugs. | extreme |
 | `CHECK_COUNT` | `CHECK_COUNT_DO` | **The flag for wrong-count bugs.** Cross-checks every (sub-)count against an independent recount (`check_count*`). Also disables count reuse so cross-checking is valid — additionally pass `--cache 0` on the command line (see the note next to the define). Only `CHECK_COUNT_DO`/`check_count_norestart*` code may call those checkers (see "Notes about the code"). | extreme |
+| `CHECK_VIVIF` | `CHECK_VIVIF_DO` | Around every `vivify_all`: clause lists, both watches, reasons, nothing unit/conflicting, watches still valid after popping any number of levels, trail unchanged, new clauses implied and the formula equivalent (CMS). Pass via `-DCMAKE_CXX_FLAGS=-DCHECK_VIVIF` in `build-vivif/` and fuzz with `scripts/fuzz_vivif.py`. | high |
 | `BUDDY_ENABLED` | BuDDy code | Not a debug check: compile-time enable of BuDDy BDD-based counting of small components (pairs with the `--buddy` option). | n/a |
 
 ## Debugging a fuzzer-found bug

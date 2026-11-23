@@ -407,6 +407,8 @@ def parse_ganak_output(fname):
                 result["restarts"] = int(line.split()[4])
             elif line.startswith("c o [rst-cube] Num restarts:"):
                 result["restarts"] = int(line.split()[5])
+            elif line.startswith("c o tot restarts"):
+                result["restarts"] = int(line.split()[4])
             elif line.startswith("c o sat called/sat/unsat/conflK"):
                 result["sat_called"] = int(line.split()[4])
             elif line.startswith("c o sat call/sat/unsat/confl/rst"):
@@ -970,6 +972,8 @@ def main():
           delta_mem_MB INT,
           step_time FLOAT
         );
+        CREATE INDEX IF NOT EXISTS preproc_dirname ON preproc(dirname);
+        CREATE INDEX IF NOT EXISTS data_dirname_fname ON data(dirname, fname);
     """)
 
     data_rows = []

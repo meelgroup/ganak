@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace GanakInt {
 
@@ -33,10 +34,29 @@ enum class DecideType : int { td = 0, ignore_td = 1 };
 struct CounterConfiguration {
   int verb = 1;
 
-  // d-DNNF: if non-empty, emit the search trace as a d4 .nnf circuit to this file.
+  // d-DNNF: if non-empty, emit the search trace as a BDNNF d-DNNF circuit to this file.
   std::string compile_fname;
+  // d-DNNF, in the input's numbering: the input literals equivalent to each
+  // internal var (index = internal 0-based var; empty = identity), units and
+  // free vars of the input that are not in the simplified CNF, and the AIG
+  // definitions of eliminated vars (refs as in spec-bdnnf.md).
+  std::vector<std::vector<int>> compile_lit_map;
+  uint32_t compile_nvars = 0;
+  std::vector<int> compile_root_units;
+  std::vector<int> compile_root_free;
+  bool compile_projected = false;
+  // extra BDNNF header keys: input file, command line, component versions
+  std::vector<std::pair<std::string, std::string>> compile_meta;
+  std::vector<uint32_t> compile_proj;  // input projection vars (may be empty)
+  std::vector<std::pair<uint64_t, uint64_t>> compile_def_nodes;
+  std::vector<std::pair<uint32_t, uint64_t>> compile_defs;
+  // d-DNNF: check every node as it is written, abort at the first wrong one.
+  int compile_check = 0;
 
   int do_restart = 0;
+  uint64_t rst_sat_confl = 20000; // budget of the SAT call that guards the kept cache at a restart
+  int rst_min_tw = 20; // no restarts below this TD width
+  int bj_defer = 1; // backjump: keep the target level's finished comps, drop them if it turns out UNSAT
   uint64_t first_restart = 20000U;
   uint64_t maximum_cache_size_MB = 2500;
   int restart_type = 7; // conflicts, luby
@@ -72,11 +92,17 @@ struct CounterConfiguration {
   int do_update_lbd_cutoff = 0;
 
   int do_vivify = 1;
+  int vivif_subs = 1;
   uint32_t vivif_every = 60000;
   double vivif_mult = 1.0;
   uint32_t vivif_outer_every_n = 1;
+  int frontier_states = 0;   // 0 disables the bounded residual counters
+  int frontier_min_vars = 4;
+  int frontier_bucket = 1;
+  int grouped_sweep = 0;     // 0 off, 1 fixed planning, 2 adaptive planning
   int do_buddy = 0;
   int do_bce = 1;
+  int backbone_lucky = 0;
   uint64_t bce_occ_lim = 10000;
   uint64_t bce_cand_lim = 20000000;
   uint32_t buddy_max_cls = 6;
@@ -88,7 +114,7 @@ struct CounterConfiguration {
   int do_use_cache = 1;
   int do_init_activity_scores = 1;
   int vsads_readjust_every = 256;
-  double act_score_divisor = 3.0;
+  double act_score_divisor = 10.0;
   double freq_score_divisor = 25.0;
   uint32_t tot_used_cutoff_vivif = 50;
 

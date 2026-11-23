@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import functools
 import itertools
 import math
 import os
@@ -16,6 +17,12 @@ RESET = "\033[0m"
 
 TMP_DIR = "tmp"
 
+#pngcairo sizes in pixels. Preproc charts scale their width (cumul: height) with the number of rows.
+PNG_SIZE = (800, 800)
+PNG_PREPROC_BAR_HEIGHT = 640
+PNG_PREPROC_BAR_PX_PER_CM = 40
+PNG_PREPROC_CUMUL_PX_PER_CM = 50
+
 #The run timeout, in seconds. PAR2 charges 2x this for every unsolved instance.
 TIMEOUT = 3600
 
@@ -24,6 +31,16 @@ MODE_RE = r" --mode \d+"
 SQL_CALL = "ganak_call"
 for m in range(10):
     SQL_CALL = f"replace({SQL_CALL},' --mode {m}','')"
+
+#Binaries are ganak_<ganak>_<arjun>_..._<cadiback>: display only the ganak hash
+BIN_HASHES_RE = r"^(?:\./)*(?:ganak)?_([0-9a-f]+)(?:_[0-9a-f]+)+"
+def short_call(call):
+    return re.sub(BIN_HASHES_RE, r"\1", call)
+_c = f"replace({SQL_CALL},'././ganak_','')"
+_us = f"instr({_c},'_')"
+_sp = f"instr({_c}||' ',' ')"
+SQL_CALL_SHORT = (f"CASE WHEN {_us} > 0 AND {_us} < {_sp}"
+                  f" THEN substr({_c},1,{_us}-1) || substr({_c},{_sp}) ELSE {_c} END")
 
 
 def convert_to_cdf(fname, fname2):
@@ -143,7 +160,7 @@ def build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fnam
 
             fname2 = fname + ".gnuplotdata"
             num_solved = convert_to_cdf(fname, fname2)
-            fname2_s.append([fname2, call, ver[:10], num_solved, dir])
+            fname2_s.append([fname2, short_call(call), ver[:10], num_solved, dir])
             table_todo.append([dir, ver])
     return fname2_s, table_todo
 
@@ -154,7 +171,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
 
     compact_cols = [
         ("replace(dirname,'out-ganak-mc','')",                       "dirname"),
-        (f"replace({SQL_CALL},'././ganak_','')",                     "call"),
+        (SQL_CALL_SHORT,                                             "call"),
         ("sum(ganak_time is not null)",                              "solved"),
         ("COUNT(*)",                                                 "attempted"),
         ("ROUND(avg(conflicts)/(1000.0*1000.0), 2)",                 "av confM"),
@@ -527,7 +544,7 @@ set key bottom right
         parts = ", ".join(f"'{dat}' using 1:2 with lines lw 2 title '{gnuplot_name_cleanup(name)}'"
                           for dat, name in plots)
         f.write("plot " + parts + "\n")
-        f.write(f"set terminal pngcairo size 900,650\nset output '{png_file}'\nreplot\n")
+        f.write(f"set terminal pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]}\nset output '{png_file}'\nreplot\n")
     console_title = "TD time CDF"
     print(f"\n{BLUE}{console_title}{RESET}")
     print(f"  PDF: {pdf_file}  PNG: {png_file}")
@@ -755,7 +772,7 @@ set arrow from 0.1,{TIMEOUT} to {to_pos*1.3},{TIMEOUT} nohead dt 3
                       "x/2 with lines lc 'gray' dt 2 notitle",
                       "x*2 with lines lc 'gray' dt 2 notitle"]
             f.write("plot " + ", ".join(parts) + "\n")
-            f.write(f"set terminal pngcairo size 850,800\nset output '{png}'\nreplot\n")
+            f.write(f"set terminal pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]}\nset output '{png}'\nreplot\n")
         print(f"\n{BLUE}BCE counting time scatter (dashed: 2x faster/slower){RESET}")
         print(f"  PDF: {pdf}  PNG: {png}")
         _gnuplot_run(gp, png)
@@ -776,7 +793,7 @@ set arrow from 1,0 to 1,100 nohead lc 'black'
 """)
             f.write("plot " + ", ".join(
                 f"'{d}' using 1:2 with steps lw 2 title '{gnuplot_name_cleanup(n)}'" for d, n in cdf) + "\n")
-            f.write(f"set terminal pngcairo size 900,650\nset output '{png}'\nreplot\n")
+            f.write(f"set terminal pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]}\nset output '{png}'\nreplot\n")
         print(f"\n{BLUE}BCE speedup CDF{RESET}")
         print(f"  PDF: {pdf}  PNG: {png}")
         _gnuplot_run(gp, png)
@@ -1160,7 +1177,7 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
         with open(gp_file, "w") as f:
             for term, out in [
                 ('pdfcairo size 52cm,40cm background "#d0d0d0"', pdf_file),
-                ('pngcairo size 600,600 background "#d0d0d0"',   png_file),
+                (f'pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]} background "#d0d0d0"',   png_file),
             ]:
                 f.write(f'set terminal {term}\n')
                 f.write(f'set output "{out}"\n')
@@ -1215,6 +1232,11 @@ def print_sigabrt_files(table_todo, fname_like):
 
 def _preproc_has_data(matched_dirs):
     """Return True if the preproc table exists and has data for any of the matched dirs."""
+    return _preproc_has_data_cached(tuple(matched_dirs))
+
+
+@functools.cache
+def _preproc_has_data_cached(matched_dirs):
     con = sqlite3.connect("data.sqlite3")
     cur = con.cursor()
     try:
@@ -1224,9 +1246,8 @@ def _preproc_has_data(matched_dirs):
         if not matched_dirs:
             return False
         dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
-        cur.execute(f"SELECT COUNT(*) FROM preproc WHERE dirname IN ({dirs_sql})")
-        count = cur.fetchone()[0]
-        return count > 0
+        cur.execute(f"SELECT 1 FROM preproc WHERE dirname IN ({dirs_sql}) LIMIT 1")
+        return cur.fetchone() is not None
     except Exception:
         return False
     finally:
@@ -1336,14 +1357,19 @@ def _preproc_file_label(matched_dirs):
 
 def _preproc_has_step_time(matched_dirs):
     """Return True if step_time column exists and has data for matched dirs."""
+    return _preproc_has_step_time_cached(tuple(matched_dirs))
+
+
+@functools.cache
+def _preproc_has_step_time_cached(matched_dirs):
     try:
         con = sqlite3.connect("data.sqlite3")
         cur = con.cursor()
         dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
-        cur.execute(f"SELECT COUNT(*) FROM preproc WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL")
-        count = cur.fetchone()[0]
+        cur.execute(f"SELECT 1 FROM preproc WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL LIMIT 1")
+        found = cur.fetchone() is not None
         con.close()
-        return count > 0
+        return found
     except Exception:
         return False
 
@@ -1757,7 +1783,7 @@ def preproc_time_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out in [
             (f'pdfcairo size {width_cm:.0f}cm,40cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size {int(width_cm * 40)},640 background "#d0d0d0"', png_file),
+            (f'pngcairo size {int(width_cm * PNG_PREPROC_BAR_PX_PER_CM)},{PNG_PREPROC_BAR_HEIGHT} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1824,7 +1850,7 @@ def preproc_efficiency_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out in [
             (f'pdfcairo size {width_cm:.0f}cm,40cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size {int(width_cm * 40)},640 background "#d0d0d0"', png_file),
+            (f'pngcairo size {int(width_cm * PNG_PREPROC_BAR_PX_PER_CM)},{PNG_PREPROC_BAR_HEIGHT} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1907,7 +1933,7 @@ def preproc_time_pie_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out, sz in [
             (f'pdfcairo size 20cm,16cm font ",18" background "#d0d0d0"', pdf_file, ""),
-            (f'pngcairo size 800,640 font ",12" background "#d0d0d0"',   png_file, ""),
+            (f'pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]} font ",12" background "#d0d0d0"',   png_file, ""),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1962,8 +1988,17 @@ def _display_png(png_file):
     if os.path.exists(png_file):
         with open(png_file, "rb") as fh:
             img_b64 = base64.b64encode(fh.read()).decode()
-        w, h = _png_dimensions(png_file)
-        print(f"\033]1337;File=inline=1;width={w}px;height={h}px:{img_b64}\a")
+        if os.environ.get("TERM") == "xterm-kitty" or "KITTY_WINDOW_ID" in os.environ:
+            #kitty ignores the iTerm2 escape; its own protocol needs <=4096-byte chunks
+            chunks = [img_b64[i:i+4096] for i in range(0, len(img_b64), 4096)]
+            out = []
+            for i, c in enumerate(chunks):
+                m = 1 if i < len(chunks) - 1 else 0
+                out.append(f"\033_G{'a=T,f=100,q=2,' if i == 0 else ''}m={m};{c}\033\\")
+            print("".join(out))
+        else:
+            w, h = _png_dimensions(png_file)
+            print(f"\033]1337;File=inline=1;width={w}px;height={h}px:{img_b64}\a")
 
 
 def _png_dimensions(png_file):
@@ -2046,7 +2081,7 @@ def preproc_share_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out in [
             (f'pdfcairo size {width_cm:.0f}cm,40cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size {int(width_cm * 40)},640 background "#d0d0d0"', png_file),
+            (f'pngcairo size {int(width_cm * PNG_PREPROC_BAR_PX_PER_CM)},{PNG_PREPROC_BAR_HEIGHT} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -2128,7 +2163,7 @@ def preproc_cumulative_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out in [
             (f'pdfcairo size {width_cm}cm,{height_cm:.0f}cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size {width_cm * 50},{int(height_cm * 50)} background "#d0d0d0"', png_file),
+            (f'pngcairo size {width_cm * PNG_PREPROC_CUMUL_PX_PER_CM},{int(height_cm * PNG_PREPROC_CUMUL_PX_PER_CM)} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -2296,7 +2331,7 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False, pair_prefix
         with open(gp_file, "w") as f:
             for term, out in [
                 (f'pdfcairo size 15cm,15cm background "#d0d0d0"', pdf_file),
-                (f'pngcairo size 600,600 background "#d0d0d0"',   png_file),
+                (f'pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]} background "#d0d0d0"',   png_file),
             ]:
                 f.write(f'set terminal {term}\n')
                 f.write(f'set output "{out}"\n')
@@ -2347,7 +2382,7 @@ def generate_gnuplot(fname2_s, verbose=False):
     with open(gnuplotfn, "w") as f:
         for term, out in [
             ('pdfcairo size 65cm,45cm background "#d0d0d0"', pdf_file),
-            ('pngcairo size 600,600 background "#d0d0d0"',   png_file),
+            (f'pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]} background "#d0d0d0"',   png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -2395,7 +2430,7 @@ for d in dirs:
   df1 = pd.read_sql_query(query, conn)
   df1['num'] = range(len(df1))
   dfs.append(df1)
-  names.append(d+" " +re.sub(r" --mode \\d+", "", df1['ganak_call'][0]))
+  names.append(d+" " +re.sub(r"^(\\./)*ganak_([0-9a-f]+)(_[0-9a-f]+)*", r"\\2", re.sub(r" --mode \\d+", "", df1['ganak_call'][0])))
 
 for i in range(len(dfs)):
     for c in dfs[i].columns:
@@ -2444,7 +2479,7 @@ for d in dirs:
     query = f"SELECT fname, {col1}, {col2}, ganak_call FROM data WHERE {col1} IS NOT NULL AND {col2} is not NULL and dirname='{d}' ORDER BY {colname}"
     df1 = pd.read_sql_query(query, conn)
     dfs.append(df1)
-    names.append(d + " " + re.sub(r" --mode \\d+", "", df1['ganak_call'][0]))
+    names.append(d + " " + re.sub(r"^(\\./)*ganak_([0-9a-f]+)(_[0-9a-f]+)*", r"\\2", re.sub(r" --mode \\d+", "", df1['ganak_call'][0])))
 
 conn.close()
 
@@ -2565,7 +2600,7 @@ only_dirs = [
     # 0b4881b4_11e203ea_67c5648a_5e1ee18e
 
     # final MCC
-    "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
+    # "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
                                       # running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
     # "out-ganak-mccomp2324-1812040-0", # 2 min timeout
     # "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
@@ -2593,7 +2628,14 @@ only_dirs = [
     # "out-ganak-mccomp2324-2634304-", # new cover stuff
     # "out-ganak-mccomp2324-2638326-1", #more cover
     # "out-ganak-mccomp2324-2791823-2", # local search cover
-    "out-ganak-mccomp2324-2799164-1", # bce
+    # "out-ganak-mccomp2324-2799164-1", # bce
+    # "out-ganak-mccomp2324-2827345-", # update arjun, other stuff(?)
+    # "out-ganak-mccomp2324-2872197-1", # new cache
+    # "out-ganak-mccomp2324-2887638", # improved vivif
+    # "out-ganak-mccomp2324-2890750", # improved subsume
+    "out-ganak-mccomp2324-2893602-1",  # subsumption, chris-sweep
+    "out-ganak-mccomp2324-2893602-4",  # subsumption, chris-sweep
+    "out-ganak-mccomp2324-2898948",  # merging different branches, chris v2
 
 ]
 # only_dirs = [

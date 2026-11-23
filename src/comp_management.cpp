@@ -35,18 +35,42 @@ CompManager::CompManager(const CounterConfiguration& config,
 {
 }
 
-void CompManager::remove_cache_pollutions_of(const StackLevel &top, bool skip_missing) {
+// Entries are in creation order, and everything created after top's comps is
+// their descendant: removing them all is a truncation.
+void CompManager::remove_cache_pollutions_of(StackLevel &top, bool skip_missing) {
   // all processed comps are found in [top.remaining_comps_ofs(), comp_stack.size())
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
   if (!skip_missing) assert(cache->exists(get_super_comp(top).id()));
 
+  CacheEntryID from = std::numeric_limits<CacheEntryID>::max();
   for (uint64_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
-    if (skip_missing && !cache->exists(comp_stack[u]->id())) continue;
-    assert(cache->exists(comp_stack[u]->id()));
-    stats.cache_pollutions_removed += cache->clean_pollutions_involving(comp_stack[u]->id());
+    const CacheEntryID id = comp_stack[u]->id();
+    if (skip_missing && !cache->exists(id)) continue;
+    release_assert(cache->exists(id));
+    from = std::min(from, id);
   }
+  if (top.kept_from != 0) from = std::min<CacheEntryID>(from, top.kept_from);
+  if (from != std::numeric_limits<CacheEntryID>::max()) {
+#ifdef SLOW_DEBUG
+    vector<CacheEntryID> roots;
+    for (uint64_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++)
+      roots.push_back(comp_stack[u]->id());
+    cache->check_removal(from, roots, top.kept_from ? get_super_comp(top).id() : 0);
+#endif
+    stats.cache_pollutions_removed += cache->remove_from(from);
+  }
+  top.kept_from = 0;
   stats.cache_pollutions_called++;
+}
+
+// Where remove_cache_pollutions_of(top) would truncate the cache from, 0 = nowhere
+CacheEntryID CompManager::pollution_start_of(const StackLevel &top) const {
+  CacheEntryID from = std::numeric_limits<CacheEntryID>::max();
+  for (uint64_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++)
+    if (cache->exists(comp_stack[u]->id())) from = std::min(from, comp_stack[u]->id());
+  if (from == std::numeric_limits<CacheEntryID>::max()) return 0;
+  return from;
 }
 
 // This creates potential component, checks if it's already in the
@@ -56,6 +80,7 @@ void CompManager::remove_cache_pollutions_of(const StackLevel &top, bool skip_mi
 void CompManager::record_remaining_comps_for(StackLevel &top) {
   const Comp& super_comp = get_super_comp(top);
   const uint64_t new_comps_start_ofs = comp_stack.size();
+  counter->get_compiler().comps_split();
   if (BCE* bce = ana.get_bce()) bce->propagate(counter->get_trail());
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unvisited (if unset), etc.
@@ -76,7 +101,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
     if (ana.var_unvisited_in_sup_comp(*vt) &&
         ana.explore_comp(*vt, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
-      void* ccomp = cache->create_new_comp(*p_new_comp, hash_seed, bpc);
+      cache->set_probe(*p_new_comp, hash_seed, bpc);
       const uint32_t br_nvars = p_new_comp->nVars();
       br_comps++;
       br_child_vars += br_nvars;
@@ -85,14 +110,11 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
       int hit_node = -1;
-      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp,
+      if (!cache->find_probe_and_incorporate_cnt(top, p_new_comp->nVars(),
             compiling ? &hit_node : nullptr)) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
-
-        const uint64_t new_comp_extra_bytes = cache->get_extra_bytes(ccomp);
-        p_new_comp->set_id(cache->add_new_comp(ccomp, super_comp.id()));
-        stats.incorporate_cache_store(new_comp_extra_bytes, p_new_comp->nVars());
+        p_new_comp->set_id(cache->add_probe(p_new_comp->nVars(), super_comp));
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";
@@ -111,7 +133,6 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         counter->get_compiler().cache_hit(hit_node);
         free_comp(p_new_comp);
       }
-      cache->free_comp(ccomp);
     }
   }
 

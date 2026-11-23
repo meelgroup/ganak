@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <map>
 #include <string>
 #include <iomanip>
 #include <gmpxx.h>
@@ -48,6 +49,9 @@ THE SOFTWARE.
 #include <approxmc/approxmc.h>
 #include <treedecomp/treedecomp_version.hpp>
 #include "file_read_helper.h"
+#include "color_count.hpp"
+#include "grouped_sweep.hpp"
+#include "selector_sweep.hpp"
 
 static constexpr uint32_t max_digit_precision = 1e6;
 
@@ -137,6 +141,9 @@ int arjun_extend_ccnr = 0;
 int poly_nvars = -1;
 int prime_field = -1;
 int strip_opt_indep = 0;
+int color_cnt = 1;
+uint64_t color_nodes = 250000;
+uint64_t color_dom_nodes = 180000000;
 uint32_t shuffle_vars_seed = 0;
 FG fg = nullptr;
 
@@ -165,6 +172,8 @@ string print_version()
     ss << CMSat::SATSolver::get_thanks_info("c o ") << endl;
     ss << "c o Using Graph library by Tuukka Korhonen and Matti Jarvisalo" << endl;
     ss << "c o Using Flowcutter by Ben Strasser" << endl;
+    ss << "c o Using dynamic blocked clause elimination by Lagniez, Marquis and Biere, SAT'24" << endl;
+    ss << "c o Using vivification by Piette, Hamadi and Sais, ECAI'08" << endl;
     ss << "c o Ganak compilation env " << GANAK::get_compilation_env() << endl;
     return ss.str();
 }
@@ -209,7 +218,8 @@ void add_ganak_options()
         .help("Optimize for quick/easy instances (<5 mins)");
 
     // d-DNNF compilation
-    add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify, no Arjun/Puura). SAT oracle stays on (witnesses synthesized vars on projected inputs).");
+    add_arg("--compilecheck", conf.compile_check, "With --compile, check every node of the circuit as it is written (decomposable, deterministic, smooth if unprojected, and counting what was counted for its level), and abort at the first wrong one");
+    add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (BDNNF binary format, see spec-bdnnf.md). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify/BCE). Arjun only runs steps that keep every model, and never eliminates a projection var; the circuit is over the input's vars, with AIG (Skolem) definitions for the eliminated non-projection vars.");
 
     // Arjun options
     add_arg("--arjun", do_arjun, "Use arjun");
@@ -228,6 +238,7 @@ void add_ganak_options()
     add_arg("--puura", do_puura, "Run Puura");
     add_arg("--puurabackbone", simp_conf.do_backbone_puura, "Perform backbone in Puura");
     add_arg("--puurabackbonemaxconfl", simp_conf.backbone_max_confl, "Max conflicts for backbone in Puura (-1 = unlimited)");
+    add_arg("--puurabackbonelucky", conf.backbone_lucky, "CaDiCaL's lucky phases in cadiback's backbone in Puura");
     add_arg("--puuraautarky", etof_conf.do_autarky, "Do autarky in Puura");
     add_arg("--arjuniter1", simp_conf.iter1, "Arjun's iter1");
     add_arg("--arjuniter2", simp_conf.iter2, "Arjun's iter2");
@@ -236,6 +247,7 @@ void add_ganak_options()
     add_arg("--arjunbackwmaxc", arjun_backw_maxc, "Arjun backw max confl");
     add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, "Arjun's oracle should find bins or not");
     add_arg("--arjunoraclemult", simp_conf.oracle_mult, "Multiplier for Arjun's oracle timeout when it is called from Puura");
+    add_arg("--arjunoraclemult2", simp_conf.oracle_mult_pass2, "Extra multiplier for Arjun's oracle timeout in Puura's second pass (after cover-drop)");
     add_arg("--puuraoraclevivif", simp_conf.oracle_vivify, "Run Puura's main oracle vivification pass");
     add_arg("--puuraoraclesparsify", simp_conf.oracle_sparsify, "Run Puura's main oracle sparsification pass");
     add_arg("--puurabve", simp_conf.do_bve, "Run BVE in Puura");
@@ -309,6 +321,12 @@ void add_ganak_options()
     add_arg("--cachetime", conf.cache_time_update, "2 = set to mid-point");
     add_arg("--lru", conf.lru_eviction, "Cache eviction: 1 = LRU (evict oldest), 0 = reverse-LRU/default (evict newest)");
 
+    // Bounded table counters
+    add_arg("--frontierstates", conf.frontier_states, "Count residual components of at most 62 independent vars with bounded table methods (word table, bucket elimination, clause-frontier sweep); the max states or table entries per step. 0 = off");
+    add_arg("--frontierminvars", conf.frontier_min_vars, "Smallest residual component (in vars) that --frontierstates tries to count");
+    add_arg("--frontierbucket", conf.frontier_bucket, "Try bucket elimination on residual components of at least 20 vars, or more than 64 clauses");
+    add_arg("--groupedsweep", conf.grouped_sweep, "Count the whole input, and residuals with more than 64 clauses, by a table sweep over groups of clauses with equal scope, or over selector blocks: 0 = off, 1 = fixed variable orders, 2 = adaptive orders and backoff");
+
     // BuDDy options
     add_arg("--buddy", conf.do_buddy, "Run BuDDy");
     add_arg("--bce", conf.do_bce, "Dynamic blocked clause elimination on non-indep vars during search");
@@ -322,6 +340,7 @@ void add_ganak_options()
 
     // Vivif options -- inprocessing during Ganak
     add_arg("--vivif", conf.do_vivify, "Vivify clauses");
+    add_arg("--vivifsubs", conf.vivif_subs, "Vivification: delete the clause if a clause of the derivation subsumes it (a red subsumer of an irred clause becomes irred)");
     add_arg("--vivifevery", conf.vivif_every, "Vivify every N conflicts");
     add_arg("--vivifmult", conf.vivif_mult, "How much to multiply timeout for vivif");
     add_arg("--vivifoutern", conf.vivif_outer_every_n, "How many restarts between outer vivif");
@@ -345,6 +364,9 @@ void add_ganak_options()
     add_arg("--arjunextendmaxconfl", arjun_extend_max_confl, "Max number of conflicts per extend operation in Arjun");
     add_arg("--arjunextend", etof_conf.do_extend_indep, "Max number of conflicts per extend operation in Arjun");
     add_arg("--stripoptindep", strip_opt_indep, "Strip optional indep support");
+    add_arg("--colorcnt", color_cnt, "If the whole (unweighted, unprojected) input CNF is a graph coloring encoding, count the colorings directly");
+    add_arg("--colornodes", color_nodes, "Node budget of the direct coloring search before the domain search");
+    add_arg("--colordomnodes", color_dom_nodes, "Node budget of the 4/5-color domain search, 0 = unlimited. Over budget: fall back to normal counting");
     add_arg("--shufflevars", shuffle_vars_seed, "After Arjun, randomly renumber vars (within the no-touch/indep/opt-indep/rest blocks) and shuffle clause order, with this seed. The count is unchanged: measures how much solve time depends on presentation. 0 = off");
 
     // Analyze candidates options
@@ -353,6 +375,9 @@ void add_ganak_options()
     // Restart options
     add_arg("--rstfirst", conf.first_restart, "Run restarts");
     add_arg("--restart", conf.do_restart, "Run restarts");
+    add_arg("--rstmintw", conf.rst_min_tw, "No restarts if the TD width is below this");
+    add_arg("--rstsatconfl", conf.rst_sat_confl, "Conflict budget of the SAT call that checks the trail extends to a model before a restart");
+    add_arg("--bjdefer", conf.bj_defer, "A backjump keeps the finished comps of the level it jumps to, and they are only dropped if that level's branch turns out UNSAT");
     add_arg("--rsttype", conf.restart_type, "Check count at every step");
     add_arg("--rstcheckcnt", conf.do_cube_check_count, "Check the count of each cube. 1 = use ganak itself without restart. 2 = use CMS one-by-one counting");
     add_arg("--rstreadjust", conf.do_readjust_for_restart, "Readjust params for restart");
@@ -403,11 +428,16 @@ void parse_supported_options(int argc, char** argv) {
       // numbering (Arjun/Puura off), one thread. SAT oracle stays on; it
       // witnesses synthesized vars on projected inputs and never fires otherwise.
       conf.do_restart = 0;
+      conf.bj_defer = 0;
       conf.do_probabilistic_hashing = 0;
       conf.do_buddy = 0;
       conf.do_vivify = 0;
-      do_arjun = 0;
-      do_puura = 0;
+      // BCE removes clauses: a SAT witness could violate one
+      conf.do_bce = 0;
+      if (shuffle_vars_seed) {
+        cout << "c o [compile] --shufflevars is ignored with --compile" << endl;
+        shuffle_vars_seed = 0;
+      }
       num_threads = 1;
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname << endl;
     }
@@ -495,6 +525,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.standalone_minimize_indep(cnf, iconf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
+    simp_conf.backbone_lucky = conf.backbone_lucky;
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf, iconf);
   } else {
     disconnected_allowed = true;
@@ -511,6 +542,125 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   assert(lits_after <= 10 * lits_before + 100000);
   (void)lits_before; (void)lits_after;
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
+}
+
+// Compile-safe simplification: only steps whose effect on the models Arjun
+// records (need_aig) and that never take an input projection var out. No
+// independent-support minimisation, SBVA or cover drop. Extension is safe: it
+// only lets ganak branch on vars defined by the projection, which splits the
+// projected models disjointly.
+void run_arjun_compile(ArjunNS::SimplifiedCNF& cnf) {
+  double const my_time = cpu_time();
+  ArjunNS::Arjun arjun;
+  ArjunNS::Arjun::InterpConf iconf;
+  if (conf.verb == 0) arjun_verb = 0;
+  arjun.set_verb(arjun_verb);
+  arjun.set_or_gate_based(arjun_gates);
+  arjun.set_xor_gates_based(arjun_gates);
+  arjun.set_ite_gate_based(arjun_gates);
+  arjun.set_irreg_gate_based(arjun_gates);
+  arjun.set_extend_max_confl(arjun_extend_max_confl);
+  arjun.set_extend_ccnr(arjun_extend_ccnr);
+  cnf.set_orig_clauses(cnf.get_clauses());
+  cnf.set_orig_sampl_vars(cnf.get_sampl_vars());
+  // Arjun's definitions need a satisfiable input
+  bool sat = true;
+  {
+    CMSat::SATSolver solver;
+    solver.set_verbosity(0);
+    solver.new_vars(cnf.nVars());
+    for (const auto& cl : cnf.get_clauses()) solver.add_clause(cl);
+    sat = solver.solve() != CMSat::l_False;
+  }
+  if (do_pre_backbone && sat) arjun.standalone_backbone(cnf, pre_backbone_max_confl);
+  if (do_puura && sat) {
+    auto sc = simp_conf;
+    sc.keep_empty_sampl = true;
+    cnf = arjun.standalone_get_simplified_cnf(cnf, sc);
+    if (etof_conf.do_autarky) arjun.standalone_autarky(cnf);
+    if (etof_conf.do_extend_indep && cnf.get_opt_sampl_vars().size() != cnf.nVars())
+      arjun.standalone_extend_sampl_set(cnf, iconf);
+  }
+  cnf.renumber_sampling_vars_for_ganak();
+  disconnected_allowed = true;
+  verb_print(1, "[compile] Arjun T: " << (cpu_time() - my_time));
+}
+
+// The circuit is given over the input's vars: map each internal var to the
+// input literals equivalent to it, and give the input vars Arjun took out of
+// the CNF as root units (constants), extra equivalent literals, AIG
+// definitions, or root free vars (unconstrained).
+void set_compile_map(const ArjunNS::SimplifiedCNF& cnf, const bool with_arjun) {
+  const uint32_t onv = with_arjun ? cnf.get_orig_num_vars() : cnf.nVars();
+  conf.compile_nvars = onv;
+  auto& m = conf.compile_lit_map;
+  m.assign(cnf.nVars(), {});
+  auto vis = [](uint32_t v, bool neg) { return neg ? -(int)(v + 1) : (int)(v + 1); };
+  std::vector<char> in_cnf(std::max<size_t>(onv, cnf.get_orig_num_vars()), 0);
+  for (const auto& [nv, ols] : cnf.get_new_to_orig_var_list()) {
+    if (nv >= cnf.nVars()) continue;
+    for (const auto& ol : ols) {
+      release_assert(ol.var() < in_cnf.size());
+      m[nv].push_back(vis(ol.var(), ol.sign()));
+      in_cnf[ol.var()] = 1;
+    }
+  }
+  if (!with_arjun) {
+    for (uint32_t v = 0; v < cnf.nVars(); v++) if (m[v].empty()) m[v].push_back((int)v + 1);
+    return;
+  }
+  std::map<uint32_t, uint32_t> new_of_orig;
+  for (const auto& [o, nl] : cnf.get_orig_to_new_var())
+    if (nl != CMSat::lit_Undef) new_of_orig[o] = nl.var();
+  std::map<const ArjunNS::AIG*, uint64_t> node_ref;
+  auto& nodes = conf.compile_def_nodes;
+  // Iterative post-order: deep AIGs would blow the stack.
+  auto ref_of = [&](const ArjunNS::aig_lit& root) -> uint64_t {
+    std::vector<std::pair<const ArjunNS::aig_lit*, bool>> st{{&root, false}};
+    auto plain = [&](const ArjunNS::aig_lit& a) -> uint64_t {
+      if (a->type == ArjunNS::AIGT::t_const) return 0;
+      if (a->type == ArjunNS::AIGT::t_lit) return 2 * (uint64_t)(a->var + 1);
+      return node_ref.at(a.get());
+    };
+    while (!st.empty()) {
+      auto [a, expanded] = st.back();
+      if ((*a)->type != ArjunNS::AIGT::t_and || node_ref.count(a->get())) { st.pop_back(); continue; }
+      if (!expanded) {
+        st.back().second = true;
+        st.push_back({&(*a)->l, false});
+        st.push_back({&(*a)->r, false});
+        continue;
+      }
+      st.pop_back();
+      const uint64_t l = plain((*a)->l) ^ ((*a)->l.neg ? 1 : 0);
+      const uint64_t r = plain((*a)->r) ^ ((*a)->r.neg ? 1 : 0);
+      node_ref[a->get()] = 2 * ((uint64_t)onv + 1 + nodes.size());
+      nodes.emplace_back(l, r);
+    }
+    return plain(root) ^ (root.neg ? 1 : 0);
+  };
+  for (uint32_t o = 0; o < onv; o++) {
+    if (in_cnf[o]) continue;
+    const auto& d = cnf.get_def(o);
+    if (d == nullptr) { conf.compile_root_free.push_back((int)o + 1); continue; }
+    if (d->type == ArjunNS::AIGT::t_const) {
+      conf.compile_root_units.push_back(vis(o, d.neg));
+      continue;
+    }
+    if (d->type == ArjunNS::AIGT::t_lit && in_cnf[d->var] && new_of_orig.count(d->var)) {
+      // o = x ^ neg, and x is (or is equivalent to) an internal var
+      const uint32_t nv = new_of_orig[d->var];
+      for (int l : std::vector<int>(m[nv])) {
+        if (std::abs(l) != (int)d->var + 1) continue;
+        const bool x_neg = l < 0;
+        m[nv].push_back(vis(o, x_neg != d.neg));
+        break;
+      }
+      in_cnf[o] = 1;
+      continue;
+    }
+    conf.compile_defs.emplace_back(o + 1, ref_of(d));
+  }
 }
 
 const char* mpfr_prec_name(const int prec) {
@@ -596,9 +746,14 @@ void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elem
     mpfr_clear(e);
 }
 
-void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
+void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time,
+    const mpz_class* precomputed = nullptr) {
     FF cnt = cnf.get_multiplier_weight()->dup();
-    if (!cnt->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads, debug_threads);
+    if (precomputed) *cnt *= ArjunNS::FMpz(*precomputed);
+    // --compile writes the circuit as a side effect of counting: count even when
+    // the weights already make the result zero.
+    else if (!cnt->is_zero() || !conf.compile_fname.empty())
+      *cnt *= *counter.count(bits_jobs, num_threads, debug_threads);
     cout << "c o Total time [Arjun+GANAK]: " << setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
 
@@ -766,24 +921,39 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
   }
   ArjunNS::SimplifiedCNF cnf(fg);
+  // --compile with Arjun: Arjun keeps an AIG definition of every input var it
+  // takes out of the CNF, so the circuit can be given over the input's vars.
+  bool compile_arjun = !conf.compile_fname.empty() && do_arjun;
+  if (compile_arjun) cnf.set_need_aig();
 
   // Parse the CNF
-  if (!program.is_used("inputfile")) read_in_a_file("-",  &cnf, etof_conf.all_indep, fg);
-  else {
+  std::string in_fname = "-";
+  if (program.is_used("inputfile")) {
     auto files = program.get<std::vector<std::string>>("inputfile");
     if (files.empty()) {
       cerr << "ERROR: you provided --inputfile but no file. Strange. Exiting. " << endl;
       exit(EXIT_FAILURE);
-    } else if (files.size() == 1) {
-      const string& fname = files[0];
-      read_in_a_file(fname, &cnf, etof_conf.all_indep, fg);
-    } else {
+    } else if (files.size() != 1) {
         cerr << "ERROR: you must only give one CNF as input (or none, and then we read from STDIN)" << endl;
         cout << "       You provided " << files.size() << " files: ";
         for (const auto& f: files) cout << f << " ";
         cout << endl;
         exit(EXIT_FAILURE);
     }
+    in_fname = files[0];
+  }
+  read_in_a_file(in_fname, &cnf, etof_conf.all_indep, fg);
+  // Arjun keeps no definitions together with 'c p no-touch': compile without it
+  if (compile_arjun && cnf.get_num_no_touch() > 0) {
+    if (in_fname == "-") {
+      cerr << "ERROR: --compile of a CNF with 'c p no-touch' from STDIN: give it as a file" << endl;
+      exit(EXIT_FAILURE);
+    }
+    verb_print(1, "[compile] 'c p no-touch' given: compiling without Arjun");
+    compile_arjun = false;
+    do_arjun = 0;
+    cnf = ArjunNS::SimplifiedCNF(fg);
+    read_in_a_file(in_fname, &cnf, etof_conf.all_indep, fg);
   }
 
   if (cnf.get_weighted() && conf.do_buddy) {
@@ -794,9 +964,70 @@ int main(int argc, char *argv[]) {
   cnf.check_cnf_sampl_sanity();
   cnf.check_cnf_vars();
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
+  if (!conf.compile_fname.empty() && cnf.get_sampl_vars().size() < cnf.nVars()) {
+    conf.compile_projected = true;
+    for (const auto& v : cnf.get_sampl_vars()) conf.compile_proj.push_back(v + 1);
+  }
+
+  if (color_cnt && mode == 0 && !cnf.get_weighted() && !cnf.get_projected()
+      && cnf.get_sampl_vars().size() == cnf.nVars() && cnf.get_red_clauses().empty()
+      && conf.compile_fname.empty() && debug_arjun_cnf.empty()) {
+    if (auto g = GanakInt::color::decode(cnf.nVars(), cnf.get_clauses())) {
+      const double t = cpu_time();
+      uint64_t edges = 0;
+      for (const auto& e : g->edges) edges += e.size();
+      auto c = GanakInt::color::count(*g, color_nodes, color_dom_nodes);
+      verb_print(1, "[color] input is a " << g->colors << "-coloring of "
+        << g->edges.size() << " vertices, " << edges/2 << " edges: "
+        << (c ? "counted" : "over budget, counting normally") << " T: " << (cpu_time()-t));
+      if (c) {
+        Ganak counter(conf, fg);
+        run_weighted_counter(counter, cnf, start_time, &*c);
+        return 0;
+      }
+    }
+  }
+
+  // Grouped root count: needs the original clause scopes, before preprocessing
+  if (conf.grouped_sweep && mode == 0 && !cnf.get_weighted() && !cnf.get_projected()
+      && cnf.get_sampl_vars().size() == cnf.nVars() && cnf.get_red_clauses().empty()
+      && cnf.nVars() <= 200000 && conf.compile_fname.empty() && debug_arjun_cnf.empty()) {
+    const double t = cpu_time();
+    GanakInt::grouped::Factors groups;
+    bool eligible = true;
+    std::optional<GanakInt::selector::Encoding> selectors;
+    if (GanakInt::selector::Encoding::fits(cnf.nVars(), cnf.get_clauses().size()))
+      selectors.emplace(cnf.nVars());
+    for (const auto &cl : cnf.get_clauses()) {
+      std::vector<int> lits;
+      for (auto l : cl) lits.push_back((l.sign() ? -1 : 1) * int(l.var() + 1));
+      if (selectors && !selectors->add(lits)) selectors.reset();
+      if (eligible) eligible = groups.add(lits);
+      if (!eligible && !selectors) break;
+    }
+    GanakInt::selector::RootStats selector_stats;
+    auto result = selectors ? selectors->solve(&selector_stats) : std::nullopt;
+    if (result)
+      cout << "c grouped root selector blocks " << selector_stats.blocks
+           << " pairs-per-block " << selector_stats.pairs_per_block
+           << " rows " << selector_stats.rows
+           << " method " << (selector_stats.witness_search ? "witness-search" : "subset-transform")
+           << " work " << selector_stats.work << endl;
+    else if (eligible) {
+      result = GanakInt::grouped::solve(groups, cnf.nVars(), conf.grouped_sweep == 2);
+      if (result) cout << "c grouped root scopes " << groups.factors.size() << endl;
+    }
+    verb_print(1, "[sweep] grouped root " << (result ? "counted" : "declined") << " T: " << (cpu_time()-t));
+    if (result) {
+      Ganak counter(conf, fg);
+      run_weighted_counter(counter, cnf, start_time, &*result);
+      return 0;
+    }
+  }
 
   // Run Arjun
-  if (!do_arjun) {
+  if (compile_arjun) run_arjun_compile(cnf);
+  else if (!do_arjun) {
     cnf.renumber_sampling_vars_for_ganak();
     disconnected_allowed = true;
   } else run_arjun(cnf);
@@ -819,6 +1050,22 @@ int main(int argc, char *argv[]) {
 
   // Run Ganak
   conf.disconnected_allowed = disconnected_allowed;
+  if (!conf.compile_fname.empty()) {
+    set_compile_map(cnf, compile_arjun);
+    std::string command;
+    for (int i = 0; i < argc; i++) command += (i ? " " : "") + std::string(argv[i]);
+    conf.compile_meta = {
+      {"input", in_fname},
+      {"command", command},
+      {"arjun", ArjunNS::Arjun::get_version_sha1()},
+      {"sbva", ArjunNS::Arjun::get_sbva_version_sha1()},
+      {"cryptominisat", CMSat::SATSolver::get_version_sha1()},
+      {"cadical", CMSat::SATSolver::get_cadical_version_sha1()},
+      {"cadiback", CMSat::SATSolver::get_cadiback_version_sha1()},
+      {"approxmc", ApproxMC::AppMC::get_version_sha1()},
+      {"treedecomp", TWD::get_version_sha1()},
+    };
+  }
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
   run_weighted_counter(counter, cnf, start_time);

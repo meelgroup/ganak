@@ -1,0 +1,13 @@
+c c bdnnf lits with negative weights: the total weighted count is 0, yet the
+c c models with -1 weigh -2 (w(-1) = w(-2) = -1, w(2) = 2).
+c c RUN: %solver --mode 1 --compile %t.bdnnf %s | %OutputCheck %s --check-prefix=TOT
+c c RUN: %bdnnf lits %t.bdnnf --cnf %s | %OutputCheck %s --check-prefix=LITS
+c c RUN: %bdnnf count %t.bdnnf --cnf %s --assume -1 | %OutputCheck %s --check-prefix=COND
+c c TOT: ^c s exact arb frac 0$
+c c LITS: ^-1 -2$
+c c COND: ^-2$
+p cnf 2 1
+c t wmc
+c p weight 1 2 0
+c p weight 2 2 0
+1 2 0

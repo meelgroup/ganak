@@ -1,12 +1,24 @@
 c c d-DNNF compile: small satisfiable unprojected formula.
 c c The circuit's structural count AND full model set must match the CNF, the
-c c circuit must be (strictly) decomposable, and after cleanup it must be in
-c c canonical form (no dead nodes, root id 1, ids contiguous).
-c c RUN: %solver --compile %t.nnf %s
-c c RUN: %ddnnf_verify %t.nnf --cnf %s --no-strict
-c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
-c c RUN: %ddnnf_verify %t.clean.nnf --cnf %s --check-decomposable --strict
-c c RUN: %ddnnf2dot %t.clean.nnf %t.dot
+c c circuit must be decomposable. enum lists the 4 models, model i is the same
+c c from any --start, and under --assume -2 it lists the 2 models with -2.
+c c RUN: %solver --compile %t.bdnnf %s
+c c RUN: %bdnnf verify %t.bdnnf --expect-count 4
+c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
+c c RUN: %bdnnf dot %t.bdnnf %t.dot
+c c RUN: %bdnnf enum %t.bdnnf --cnf %s -o %t.enum
+c c RUN: sort -u %t.enum | wc -l | %OutputCheck %s --check-prefix=ENUM
+c c RUN: %bdnnf enum %t.bdnnf --start 1 -n 2 -o %t.win
+c c RUN: sed -n 2,3p %t.enum | diff - %t.win
+c c RUN: %bdnnf enum %t.bdnnf --cnf %s --assume -2 -o %t.a
+c c RUN: wc -l < %t.a | %OutputCheck %s --check-prefix=ASSUME
+c c RUN: grep -c -- "-2 " %t.a | %OutputCheck %s --check-prefix=ASSUME
+c c RUN: %bdnnf twise %t.bdnnf -t 2 -o %t.tw
+c c RUN: %bdnnf twise-check %t.bdnnf %t.tw -t 2
+c c RUN: head -1 %t.tw > %t.tw1
+c c RUN: not %bdnnf twise-check %t.bdnnf %t.tw1 -t 2
+c c ENUM: ^4$
+c c ASSUME: ^2$
 p cnf 3 2
 1 2 0
 -2 3 0

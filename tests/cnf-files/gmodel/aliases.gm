@@ -1,0 +1,18 @@
+# A name defined as another name gets its own variable, and the graph shows
+# atmost's arguments negated, exactly's both ways.
+# RUN: %gmodel %s | %GMCheck --check-prefix=CNF %s
+# RUN: %gmodel %s --dot - | %GMCheck --check-prefix=DOT %s
+event x 0.5
+a = !x
+b = a
+c = atmost 0 of (a, x)
+d = exactly 1 of (a, x)
+query b
+query c
+query d
+# CNF: ^c 2 a$
+# CNF-NEXT: ^c 3 b$
+# DOT-L: n3 -> n0 [style=dashed, arrowhead=odot];
+# DOT-NEXT-L: n3 -> n1 [style=dashed, arrowhead=odot];
+# DOT-NEXT-L: n4 -> n0 [style=dotted];
+# DOT-NEXT-L: n4 -> n1 [style=dotted];

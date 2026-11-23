@@ -193,7 +193,7 @@ public:
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   const FG& get_fg() const { return fg; }
   const FF& get_two() const { return two; }
-  bool weighted() const { return fg->weighted(); }
+  bool weighted() const { return is_weighted; }
   DataAndStatistics& get_stats() { return stats; }
   uint32_t last_dec_candidates = 0; // heuristic to force update of comp analyzer timestamps
 
@@ -206,6 +206,7 @@ private:
   std::unique_ptr<Compiler> compiler;
 
   FG fg;
+  bool is_weighted; // fg->weighted() is virtual, and set_lit() asks it on every assignment
   FF two; //stores 1+1
   CounterConfiguration conf;
   DataAndStatistics stats;
@@ -250,7 +251,12 @@ private:
   inline bool add_bin_cl(Lit a, Lit b, bool red);
 
   // DNF Cube stuff
-  bool restart_if_needed();
+  enum class RstRet { none, end, backtrack };
+  RstRet restart_if_needed();
+  bool restart_due() const;
+  void restart_with_cubes();
+  RstRet restart_in_search();
+  void readjust_for_restart();
   vector<Cube> mini_cubes;
   uint32_t disable_small_cubes(vector<Cube>& cubes) const;
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
@@ -347,7 +353,7 @@ public:
   void set_lit(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
   void unset_lit(Lit lit);
   LiteralIndexedVector<LitWatchList> watches;
-  void go_back_to(int32_t backj);
+  void go_back_to(int32_t backj, bool may_keep = false);
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true);
   inline VarData& var(const Lit lit) { return var_data[lit.var()]; }
   inline VarData& var(const uint32_t v) { return var_data[v]; }
@@ -367,6 +373,16 @@ public:
   double var_act(const uint32_t v) const {
     return lit_act.lit(v, false) + lit_act.lit(v, true); }
   DecisionStack decisions;
+  // Bounded residual counters (--frontierstates, --groupedsweep), see try_sweep()
+  bool try_sweep();
+  void print_sweep_stats() const;
+  struct SweepStats {
+    uint64_t attempts = 0, finished = 0, peak = 0;
+    uint64_t word = 0, bucket = 0, sparse = 0;
+    uint32_t grouped_attempts = 0, grouped_finished = 0;
+    double cpu = 0;
+  } sweep_stats;
+  unsigned grouped_misses = 0, grouped_skip = 0, wide_misses = 0, wide_skip = 0;
   void decide_lit();
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   struct ScoreParts { double td = 0; double act = 0; double freq = 0;
@@ -468,7 +484,32 @@ public:
   bool v_propagate();
   void v_backtrack();
   void v_unset_lit(const Lit l);
-  void v_enqueue(const Lit l);
+  void v_enqueue(const Lit l, Antecedent ante = Antecedent(), bool red = false);
+  void v_analyze_into_tmp(Lit true_lit);
+  void v_del_subsumed(ClauseOfs off);
+  vector<Antecedent> v_reasons;
+  vector<uint8_t> v_reason_red;
+  // Level 0 only: the lit is not a permanent consequence of the irred
+  // clauses. It came from a red clause or from a trail lit not in unit_cls,
+  // which is lost at the next restart.
+  vector<uint8_t> v_l0_red;
+  bool v_confl_red = false;
+  // A clause of the last derivation that is a subset of the candidate, up
+  // to lits false at level 0.
+  struct VSub {
+    bool found = false;
+    bool bin = false;
+    bool red = false;
+    bool l0_red = false;
+    ClauseOfs off = 0;
+    Lit a, b;
+  };
+  VSub v_sub;
+  vector<ClauseOfs> v_promoted;
+  vector<uint8_t> v_seen;
+  ClauseOfs v_ignore = std::numeric_limits<ClauseOfs>::max();
+  Antecedent v_confl;
+  Lit v_confl_lit = NOT_A_LIT;
   TriValue v_val(const Lit l) const { return v_values[l]; }
   void v_new_lev();
   void v_backup();
@@ -512,6 +553,18 @@ public:
   template<class T2> bool v_cl_satisfied(const T2& cl) const;
   void vivif_backtrack();
   void toplevel_vivify_subsume_fullprobe();
+#ifdef CHECK_VIVIF
+  struct VivifSnap {
+    vector<Lit> trail;
+    vector<int32_t> levs;
+    vector<Antecedent> antes;
+    vector<vector<Lit>> irred;
+    vector<vector<Lit>> red;
+  };
+  VivifSnap vivif_snap() const;
+  void check_vivif_state(const char* where) const;
+  void check_vivif_vs_snap(const VivifSnap& s);
+#endif
   vector<Lit> v_trail;
   uint32_t v_qhead;
   uint32_t v_lev;
@@ -543,7 +596,8 @@ inline void Counter::unset_lit(Lit lit) {
   VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
   SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
   var(lit).ante = Antecedent();
-  if (weighted() && !sat_mode() && lit.var() < opt_indep_support_end && !get_weight(lit)->is_zero()) {
+  if (weighted() && !sat_mode() && lit.var() < opt_indep_support_end &&
+      (!get_weight(lit)->is_zero() || !conf.compile_fname.empty())) {
     uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
     bool in_comp = (at[0] == at[lit.var()]);
     if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));

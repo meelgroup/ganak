@@ -112,6 +112,9 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(5) << cube_lit_flp);
 
   verb_print(1, "tot restarts                   " << setw(5) << num_restarts);
+  verb_print(1, "rst unsat/skip/levs undone/T   " << rst_unsat << " / " << rst_skip_sat
+      << " / " << rst_levels_undone << " / " << std::fixed << std::setprecision(2) << rst_time);
+  verb_print(1, "bj deferred                    " << setw(5) << bj_deferred);
 
   verb_print(1, "comp sortsK/avg sz             "
     << setw(5) << comp_sorts/1000 << " / "
@@ -152,12 +155,17 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(9) << safe_div(br_share_act*100, br_decisions) << " "
     << setw(9) << safe_div(br_share_freq*100, br_decisions));
 
-  verb_print(1, "vivif: try/cls/clviv/litsravg  "
+  verb_print(1, "vivif: try/cls/clviv/litsravg/rej/unit  "
     << setw(9) << vivif_tried << " "
     << setw(9) << vivif_tried_cl << " "
     << setw(9) << vivif_cl_minim << " "
-    << setw(9) << safe_div(vivif_cl_minim, vivif_lit_rem) << " "
-  );
+    << setw(9) << safe_div(vivif_lit_rem, vivif_cl_minim) << " "
+    << setw(9) << vivif_cl_rejected << " "
+    << setw(9) << vivif_unit_dropped);
+  verb_print(1, "vivif subs red/irred/promoted      "
+    << setw(9) << vivif_subs_red << " "
+    << setw(9) << vivif_subs_irred << " "
+    << setw(9) << vivif_subs_promoted);
 
   verb_print(1, "toplev subs runs/bins/long-cls "
     << setw(9) << subsume_runs << " "
@@ -191,6 +199,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setprecision(2) << setw(9) << std::left
     << safe_div(num_cache_look_ups,(1000.0*(cpu_time()-counter->get_start_time())))
   );
+  verb_print(1, "cache stores w/ inline cnt %   "
+    << setprecision(3) << safe_div(100.0*(double)cache_inline_cnts, (double)total_num_cached_comps));
   verb_print(1, "cache miss rate                "
     << setprecision(3) << cache_miss_rate());
   verb_print(1, "avg hit/store num vars "

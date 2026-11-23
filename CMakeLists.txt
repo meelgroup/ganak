@@ -228,6 +228,9 @@ if(NOT WIN32)
         #add_cxx_flag_if_supported("-fvisibility=hidden")
     endif()
 
+    # Everything is built -fPIC, the static binary too. Without this GCC must assume an
+    # exported function can be interposed, so it does not inline it even within its own TU.
+    add_cxx_flag_if_supported("-fno-semantic-interposition")
     add_cxx_flag_if_supported("-mpopcnt")
     add_cxx_flag_if_supported("-msse4.2")
     add_cxx_flag_if_supported("-mpclmul")
@@ -358,7 +361,45 @@ if(NOT NOZLIB AND NOT (NOT BUILD_SHARED_LIBS AND WIN32))
     endif()
 endif()
 
+
 include(FetchContent)
+
+option(NOZSTD "Don't use zstd (BDNNF d-DNNF frames are then written uncompressed)" OFF)
+set(ZSTD_FOUND OFF)
+if(NOT NOZSTD)
+    if(STATIC_BINARY)
+        find_library(ZSTD_LIBRARY NAMES libzstd.a)
+    else()
+        find_library(ZSTD_LIBRARY NAMES zstd)
+    endif()
+    find_path(ZSTD_INCLUDE_DIRS zstd.h)
+    if(ZSTD_LIBRARY AND ZSTD_INCLUDE_DIRS)
+        set(ZSTD_FOUND ON)
+        message(STATUS "OK, Found zstd: ${ZSTD_LIBRARY}")
+    elseif(STATIC_BINARY)
+        message(STATUS "No static libzstd.a found, fetching zstd")
+        set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+        set(ZSTD_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        set(ZSTD_BUILD_STATIC ON CACHE BOOL "" FORCE)
+        set(ZSTD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(ZSTD_LEGACY_SUPPORT OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(zstd
+            GIT_REPOSITORY https://github.com/facebook/zstd.git
+            GIT_TAG        v1.5.7
+            GIT_SHALLOW    TRUE
+            SOURCE_SUBDIR  build/cmake)
+        FetchContent_MakeAvailable(zstd)
+        # BUILD_INTERFACE: keeps the fetched target out of ganak's export set.
+        set(ZSTD_LIBRARY $<BUILD_INTERFACE:libzstd_static>)
+        set(ZSTD_INCLUDE_DIRS ${zstd_SOURCE_DIR}/lib)
+        set(ZSTD_FOUND ON)
+    endif()
+    if(ZSTD_FOUND)
+        add_compile_definitions(USE_ZSTD)
+    else()
+        message(STATUS "WARNING: Did not find zstd, BDNNF files will be written uncompressed")
+    endif()
+endif()
 # FetchContent_Populate with declared details is deprecated in CMake 3.30+ (CMP0169).
 # We call it intentionally to clone-only without add_subdirectory, so silence the warning.
 if(POLICY CMP0169)
@@ -555,16 +596,14 @@ if(ENABLE_TESTING)
   message(STATUS "Python 3 -- Python3_NumPy_VERSION=${Python3_NumPy_VERSION}")
   enable_testing()
   add_subdirectory(tests/cnf-files)
+  add_executable(frontier-count-test tests/frontier_counts.cpp)
+  target_include_directories(frontier-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  add_test(NAME frontier_counts COMMAND frontier-count-test)
+  add_executable(selector-count-test tests/selector_counts.cpp)
+  target_include_directories(selector-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(selector-count-test PRIVATE PkgConfig::GMP)
+  add_test(NAME selector_counts COMMAND selector-count-test)
 
-  # Property-based d-DNNF tests: generate random CNFs, brute-force the true
-  # count/model set as an oracle, and check the emitted circuit against it.
-  # Seeded so a regression reproduces identically; they self-check against the
-  # oracle, so there is no golden file to break when the circuit shape changes.
-  # Small/few by design: the oracle is 2^nv and each case spawns ganak, so we
-  # keep these quick for `make test`. For deep fuzzing run them by hand with a
-  # larger count / --maxvars (see CLAUDE.md).
-  add_test(NAME ddnnf_compile_fuzz
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 40 --seed 1 --minvars 6 --maxvars 10)
 endif()
 
 # -----------------------------------------------------------------------------

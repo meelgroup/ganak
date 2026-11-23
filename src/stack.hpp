@@ -67,6 +67,10 @@ public:
   }
 
   uint32_t var = 0;
+  // Cache entries from this id on were kept by a backjump to this level, see
+  // Counter::go_back_to(): removing this level's cache pollution removes them
+  // too. 0 = none
+  uint32_t kept_from = 0;
   void reset() {
     act_branch = 0;
     branch_unsat = {};
@@ -134,6 +138,7 @@ public:
   void change_to_right_branch() {
     assert(act_branch == false);
     act_branch = true;
+    kept_from = 0; // the left branch finished, what it kept is like any finished comp
     SLOW_DEBUG_DO(assert(is_zero(act_branch)));
   }
 
@@ -155,6 +160,11 @@ public:
         << endl;
   }
 
+  void set_branch_one() {
+    if (branch_mc[act_branch]) branch_mc[act_branch]->set_one();
+    else branch_mc[act_branch] = fg->one();
+  }
+
   void include_one_sol() {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: ONE" << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
@@ -165,14 +175,15 @@ public:
       assert(is_zero(act_branch));
       return;
     }
-    if (!is_indep || is_zero(act_branch))
-      branch_mc[act_branch] = fg->one();
+    if (!is_indep || is_zero(act_branch)) set_branch_one();
     VERBOSE_DEBUG_DO(common_print(before));
   }
 
   // We *genuinely* found a solution. It's NOT UNSAT. But
   // it may be that this weighted solution is zero
-  void include_solution(const FF& solutions) {
+  void include_solution(const FF& solutions) { include_solution(solutions.get()); }
+  // nullptr means zero
+  void include_solution(const CMSat::Field* solutions) {
 #ifdef VERBOSE_DEBUG
     if (solutions == nullptr) cout << COLRED << "incl sol: " << "0" << " ind: " << is_indep << COLDEF << " ";
     else cout << COLRED << "incl sol: " << *solutions << " ind: " << is_indep << COLDEF << " ";
@@ -184,16 +195,17 @@ public:
       return;
     }
 
-    if (cnt_is_zero(solutions)) {
+    if (solutions == nullptr || solutions->is_zero()) {
       branch_zero[act_branch] = true;
       branch_mc[act_branch] = nullptr;
     } else if (!is_indep) {
       // For non-indep levels, only track satisfiability (0/1): the projected count
       // is semantically 0 or 1 when no indep vars remain in the component.
-      branch_mc[act_branch] = fg->one();
+      set_branch_one();
     } else {
       if (is_zero(act_branch) || is_one(act_branch)) {
-        branch_mc[act_branch] = solutions->dup();
+        if (branch_mc[act_branch]) *branch_mc[act_branch] = *solutions;
+        else branch_mc[act_branch] = solutions->dup();
       } else {
         *branch_mc[act_branch] *= *solutions;
       }
@@ -226,6 +238,7 @@ public:
 
   [[nodiscard]] bool branch_is_zero() const { return branch_zero[act_branch]; }
   [[nodiscard]] bool branch_found_unsat() const { return branch_unsat[act_branch]; }
+  [[nodiscard]] bool side_unsat(bool b) const { return branch_unsat[b]; }
   // an unexplored right branch was implied away, i.e. it's UNSAT too
   [[nodiscard]] bool comp_unsat() const { return branch_unsat[0] && (!act_branch || branch_unsat[1]); }
   void mark_branch_unsat() {
@@ -235,6 +248,11 @@ public:
   [[nodiscard]] const FF& get_branch_sols() const { return branch_mc[act_branch]; }
   [[nodiscard]] const FF& get_model_side(int side) const { return branch_mc[side]; }
   void zero_out_branch_sol() { branch_mc[act_branch] = nullptr; }
+  void reset_act_branch() {
+    branch_mc[act_branch] = nullptr;
+    branch_unsat[act_branch] = false;
+    branch_zero[act_branch] = false;
+  }
   [[nodiscard]] FF total_model_count() const {
     if (is_indep) {
       if (is_zero(0)) return val_or_zero(1);

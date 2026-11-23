@@ -32,39 +32,11 @@ nix shell github:meelgroup/ganak#ganak
 
 Then you will have `ganak` binary available and ready to use.
 
-If this is somehow not what you want, you can also build it. See the [GitHub
+If this is somehow not what you want, you can also build it. See
+[BUILDING.md](BUILDING.md) for all the ways to build Ganak (dynamic, static,
+Python, WebAssembly), and the [GitHub
 Action](https://github.com/meelgroup/ganak/actions/workflows/build.yml) for the
 specific set of steps.
-
-### Building statically
-
-To build a static binary, you first need to build GMP with position-independent code
-enabled. GMP's hand-optimised assembly is normally compiled without `-fPIC` (fine for
-a native static binary), but `-fPIC` is required whenever the static `.a` is linked
-into a shared object — for example, the Python extension (`.so`). Passing `--with-pic`
-to GMP's `configure` makes both uses work:
-
-```shell
-wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
-tar xf gmp-6.3.0.tar.xz
-cd gmp-6.3.0
-./configure --enable-static --enable-cxx --enable-shared --with-pic
-make -j$(nproc)
-sudo make install
-cd ..
-```
-
-Then point CMake to the installed GMP static libraries (note: use `/usr/local/lib/`,
-not a custom build directory, as those may be compiled for the wrong architecture):
-
-```shell
-mkdir build && cd build
-cmake -DBUILD_SHARED_LIBS=OFF \
-    -DGMPXX_LIBRARY=/usr/local/lib/libgmpxx.a \
-    -DGMP_INCLUDE_DIR=/usr/local/include \
-    ..
-make -j$(nproc)
-```
 
 ## Usage
 Ganak takes a CNF in a special, DIMACS-like format as specified by the model
@@ -253,59 +225,17 @@ two systems' counts to get the final count.
 
 ## Supported Weights
 
-| Mode | Flag | Field | Weight format example | Notes |
-|------|------|-------|-----------------------|-------|
-| 0 | `--mode 0` | Integer | _unweighted_ | Default; weights not supported. Supports `--appmct` |
-| 1 | `--mode 1` | Rational (exact) | `c p weight 1 1/4 0` | No floating-point error |
-| 2 | `--mode 2` | Complex rational | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi` |
-| 3 | `--mode 3` | Polynomial over rationals | `c p weight 9 1/2*x0+4*x1+2 0` | Requires `--npolyvars N` |
-| 4 | `--mode 4` | Parity (mod 2) | `c p weight 1 1 0` | |
-| 5 | `--mode 5` | Integer mod prime | `c p weight 1 3 0` | Requires `--prime X` |
-| 6 | `--mode 6` | Complex float (MPFR) | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi`; see `--mpfrprec` |
-| 7 | `--mode 7` | Real float (MPFR) | `c p weight 1 0.3 0` | See `--mpfrprec` |
-| 13 | `--mode 13` | Laurent polynomial over rationals | `c p weight 9 1/2*z0^2-3*z1^-1 0` | Requires `--npolyvars N`; exponents may be negative |
-
-### Laurent polynomial counting (`--mode 13`)
-
-Mode 13 is like the polynomial mode (`--mode 3`) but the weights are
-*multivariate Laurent polynomials* over the rationals, i.e. polynomials whose
-variable exponents may be **negative** as well as non-negative. Pass the number
-of polynomial variables with `--npolyvars N`, and refer to them as `z0`, `z1`,
-..., `z(N-1)` in the weight lines. Terms are written `coeff*zI^e` (the
-exponent `e` may be negative, and parentheses around it are optional, e.g.
-`z0^-2` or `z0^(-2)`); separate terms with `+`/`-`. A single weight line such as
-`c p weight 9 1/2*z0^2 - 3*z1^-1 + z0^(-2) 0` is a valid Laurent polynomial.
-
-#### Worked example
-
-The following CNF has one clause `z0 ∨ z1` and assigns a Laurent-polynomial
-weight to each literal:
-
-```
-p cnf 2 1
-c t wmc
-1 2 0
-c p weight 1 z0+1 0
-c p weight -1 z0^-1 0
-c p weight 2 z1+1 0
-c p weight -2 z1^-1 0
-```
-
-Running it:
-
-```
-./ganak --mode 13 --npolyvars 2 example.cnf
-```
-
-produces (summing the weight products over the three satisfying assignments):
-
-```
-s SATISFIABLE
-c s exact laurent z0*z1 + z0 + z1 + z0*z1^-1 + 1 + z0^-1*z1 + z1^-1 + z0^-1
-```
-
-The count is printed on the `c s exact laurent` line as the resulting Laurent
-polynomial.
+| Mode | Field | Weight format example | Notes |
+|------|-------|-----------------------|-------|
+| 0 | Integer | _unweighted_ | Default; weights not supported. Supports `--appmct` |
+| 1 | Rational (exact) | `c p weight 1 1/4 0` | No floating-point error |
+| 2 | Complex rational | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi` |
+| 3 | Polynomial over rationals | `c p weight 9 1/2*x0+4*x1+2 0` | Requires `--npolyvars N` |
+| 4 | Parity (mod 2) | `c p weight 1 1 0` | |
+| 5 | Integer mod prime | `c p weight 1 3 0` | Requires `--prime X` |
+| 6 | Complex float (MPFR) | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi`; see `--mpfrprec` |
+| 7 | Real float (MPFR) | `c p weight 1 0.3 0` | See `--mpfrprec` |
+| 13 | Laurent polynomial over rationals | `c p weight 9 1/2*z0^2-3*z1^-1 0` | Requires `--npolyvars N`; exponents may be negative. See [LAURENT-POLYNOMIALS.md](LAURENT-POLYNOMIALS.md) |
 
 You can also write your own field by implementing the `Field` and `FieldGen`
 interfaces. Absolutely _any_ field will work, and it's as easy as implementing
@@ -315,37 +245,82 @@ exercise to do.
 ## Compiling to a d-DNNF circuit
 
 Ganak can compile its search trace into a
-[d-DNNF](https://en.wikipedia.org/wiki/Decision-DNNF) circuit in the d4 `.nnf`
-format, for reuse in repeated queries, model enumeration, or functional
-synthesis.
+[d-DNNF](https://en.wikipedia.org/wiki/Decision-DNNF) circuit, for reuse in
+repeated queries, model enumeration, or functional synthesis. The circuit is
+written in BDNNF, a compact binary format that is streamed to disk as Ganak
+runs and can be queried without loading it into memory. See
+[spec-bdnnf.md](spec-bdnnf.md) for the format.
 
-**1. Dump** (still prints the count; streamed to disk, so it is not held in
-memory). The output is a faithful d-DNNF:
-
-```shell
-./ganak --compile out.nnf in.cnf
-```
-
-For a projected CNF (inputs `< indep_support_end`, outputs `>= indep_support_end`),
-the SAT oracle records one example assignment of the output vars at each SAT
-leaf, so the same faithful circuit is also a sound Boolean functional-synthesis
-compiler — read a Skolem witness off the circuit with
-`tests/ddnnf_verify.synthesize()`.
-
-**2. Fix up.** The raw file is correct from the root but keeps Ganak's internal
-ids and may carry unreachable "dead" nodes. `ddnnf-cleanup` drops them and
-renumbers `root = 1`, contiguous, yielding a strict d4 file:
+Compiling still prints the count:
 
 ```shell
-./ddnnf-cleanup out.nnf clean.nnf      # omit 2nd arg (or "-") to write to stdout
+./ganak --compile out.bdnnf in.cnf
 ```
 
-**3. Verify.** `tests/ddnnf_verify.py` prints the circuit's structural count,
-which must match Ganak's. It accepts both the raw and cleaned files:
+### Querying the circuit: `bdnnf`
+
+`bdnnf` answers queries on the circuit. Weights come from `--cnf`; the
+projection set is stored in the circuit. Queries take `--assume L1,L2,...` to
+condition on literals.
+
+| Command | What it does |
+|---|---|
+| `count` | weighted, projected model count |
+| `sample -n N` | weighted (or uniform) random models |
+| `enum [-n N] [--start I]` | the models, in a fixed order; resumes from model I |
+| `lits` | the count of the models containing each literal |
+| `core` | literals true in every model (core; negated: dead) |
+| `batch FILE [--sat]` | a count (or SAT) per line of literals, many per pass |
+| `atomic [--cross]` | sets of vars equal (or opposite) in every model |
+| `opt --obj F [-k K] [--min]` | the k best models under a sum of literal values |
+| `twise -t T` | samples covering every satisfiable t-tuple of literals |
+| `twise-check FILE` | check that samples cover every satisfiable t-tuple |
+| `stream` | the queries above, one per stdin line, circuit held in memory |
+| `verify` | check the format and every property the file claims |
+| `compact OUT` | drop the nodes the root does not reach, merge identical ones |
+| `dump`, `dot`, `to-d4` | text form, Graphviz rendering, d4 `.nnf` for legacy tools |
 
 ```shell
-python3 tests/ddnnf_verify.py clean.nnf
+./bdnnf count out.bdnnf --cnf in.cnf --assume 3,-5
+./bdnnf sample out.bdnnf -n 100 --cnf in.cnf
 ```
+
+See [BDNNF-TOOL.md](BDNNF-TOOL.md) for all options, and its [comparison with
+ddnnife](BDNNF-TOOL.md#comparison-with-ddnnife) for how the commands correspond
+to those of [ddnnife](https://github.com/practical-kc/ddnnife).
+
+## Probabilistic models: `ganak-model`
+
+`ganak-model` turns a readable probabilistic model into a weighted projected
+CNF, and with `--solve` computes its probabilities exactly with Ganak. Events
+are independent, everything else is defined from them:
+
+```
+event eng1 "Engine 1 shuts down" 2e-5
+event eng2 "Engine 2 shuts down" 2e-5
+event dual "Both engines lost"   1e-7
+eng1_out = eng1 | dual
+eng2_out = eng2 | dual
+no_thrust = eng1_out & eng2_out
+query no_thrust
+query dual given no_thrust
+require no_thrust < 1e-8
+```
+
+```shell
+./ganak-model --solve model.gm          # exact answers, requirements PASS/FAIL
+./ganak-model model.gm -o model.cnf     # the CNF, for ganak --compile and bdnnf
+```
+
+Here the requirement fails: the common cause `dual` (1e-7) dominates both
+engines failing independently (4e-10).
+
+The language also has `choice` variables, `flip(p)`, `if-then-else`,
+`atleast/atmost/exactly k of`, noisy-OR `rule`s and `constraint`s; see
+[spec-ganak-model.md](spec-ganak-model.md) and the
+[examples](examples/models/). The web page has an editor for it that draws the
+model, conditions on evidence by clicking nodes, and shows how much each event moves
+an outcome, all from the d-DNNF Ganak compiles.
 
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter

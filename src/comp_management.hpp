@@ -104,7 +104,9 @@ public:
 
   // skip_missing=false: assert all comps exist in cache (default)
   // skip_missing=true:  silently skip comps not in cache
-  void remove_cache_pollutions_of(const StackLevel &top, bool skip_missing = false);
+  void remove_cache_pollutions_of(StackLevel &top, bool skip_missing = false);
+  CacheEntryID pollution_start_of(const StackLevel &top) const;
+  CompCacheIF& get_cache_if() { return *cache; }
 
   // MurmurHash3_x64_128's API takes a 32-bit seed
   uint32_t hash_seed;
@@ -178,9 +180,9 @@ inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & w
   bpc.calcPackSize(ana.get_max_var(), ana.get_max_clid());
   get_random_seed_for_hash();
   if (conf.do_probabilistic_hashing) {
-    cache = std::make_unique<CompCache<CacheableComp<HashedComp>>>(stats, conf);
+    cache = std::make_unique<CompCache<CacheableComp<HashedComp>>>(stats, conf, *fg);
   } else {
-    cache = std::make_unique<CompCache<CacheableComp<DiffPackedComp>>>(stats, conf);
+    cache = std::make_unique<CompCache<CacheableComp<DiffPackedComp>>>(stats, conf, *fg);
   }
 
   //Add dummy comp
@@ -192,7 +194,7 @@ inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & w
   assert(comp_stack.size() == 2);
   comp_stack.back()->create_init_comp(ana.get_max_var(), ana.get_max_clid(),
       std::numeric_limits<uint32_t>::max());
-  cache->init(*comp_stack.back(), hash_seed, bpc);
+  cache->init(*comp_stack.back(), hash_seed, bpc, &comp_stack);
 }
 
 }

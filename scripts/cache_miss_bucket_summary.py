@@ -61,7 +61,7 @@ def main():
 
     cur.execute("SELECT DISTINCT ganak_call FROM data WHERE dirname=? AND ganak_call IS NOT NULL", (args.dirname,))
     #--mode is set per instance type, not part of the config
-    calls = [re.sub(r" --mode \d+", "", re.sub(r" mc2022.*cnf.*", "", re.sub(r"\./\./ganak", "", r[0])))
+    calls = [re.sub(r" --mode \d+", "", re.sub(r" mc2022.*cnf.*", "", re.sub(r"^(\./)*ganak_([0-9a-f]+)(_[0-9a-f]+)*", r"\2", r[0])))
              for r in cur.fetchall()]
     calls = list(dict.fromkeys(calls))
 

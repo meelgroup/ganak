@@ -23,56 +23,105 @@ THE SOFTWARE.
 #pragma once
 
 #include <cassert>
-#include "structures.hpp"
-#include "base_comp.hpp"
+#include <cstdint>
+#include <gmp.h>
+#include <arjun/arjun.h>
+#include "comp.hpp"
 #include "hashval.hpp"
 
 namespace GanakInt {
 
-class Comp;
-class CompArchetype;
+// Non-negative integer counts of at most 128 bits, stored in the entry itself
+// instead of as a heap FMpz (two allocations, 64+ bytes).
+struct SmallIntCodec {
+#if GMP_NUMB_BITS == 64 && GMP_NAIL_BITS == 0
+  static constexpr bool supported = true;
+#else
+  static constexpr bool supported = false;
+#endif
+  static bool pack(const CMSat::Field& f, uint64_t out[2]) {
+    if constexpr (!supported) return false;
+    const auto* z = static_cast<const ArjunNS::FMpz&>(f).val.get_mpz_t();
+    if (z->_mp_size < 0 || z->_mp_size > 2) return false;
+    out[0] = z->_mp_size > 0 ? z->_mp_d[0] : 0;
+    out[1] = z->_mp_size > 1 ? z->_mp_d[1] : 0;
+    return true;
+  }
+  static void unpack(const uint64_t in[2], CMSat::Field& f) {
+    if constexpr (supported) {
+      auto* z = static_cast<ArjunNS::FMpz&>(f).val.get_mpz_t();
+      mp_limb_t* p = mpz_limbs_write(z, 2);
+      p[0] = in[0];
+      p[1] = in[1];
+      mpz_limbs_finish(z, in[1] ? 2 : (in[0] ? 1 : 0));
+    }
+  }
+};
 
+// Trivially copyable: the cache moves entries with plain copies when it
+// compacts, and frees their heap parts explicitly via release().
 template<typename T>
-class CacheableComp: public BaseComp, private T {
+class CacheableComp: private T {
 public:
+  enum : uint8_t { cnt_none = 0, cnt_zero = 1, cnt_inline = 2, cnt_heap = 3 };
+
   CacheableComp() = default;
-  CacheableComp(CacheableComp&&) noexcept = default;
-  CacheableComp(const CacheableComp&) = default;
-  CacheableComp& operator=(const CacheableComp&) = default;
-  // without this, std::swap in add_new_comp copy-assigns, which reallocates the packed
-  // data, and its malloc_usable_size can differ from what was accounted for
-  CacheableComp& operator=(CacheableComp&&) noexcept = default;
-  CacheableComp(const Comp &comp, const uint32_t hash_seed, const BPCSizes& bpc) {
+  void set_comp(const Comp &comp, const uint32_t hash_seed, const BPCSizes& bpc) {
     hashkey = T::set_comp(comp, hash_seed, bpc);
   }
+  // the packed data now belongs to a copy of this, forget it
+  void forget() { T::forget(); }
 
-  // Cache Pollution Management
-  void set_father(CacheEntryID f) { father_ = f; }
-  CacheEntryID father() const { return father_; }
-  void set_next_sibling(CacheEntryID sibling) { next_sibling_ = sibling; }
-  CacheEntryID next_sibling() const { return next_sibling_; }
-  void set_first_descendant(CacheEntryID descendant) { first_descendant_ = descendant; }
-  CacheEntryID first_descendant() const { return first_descendant_; }
-  void set_next_bucket_element(CacheEntryID entry) { next_bucket_element_ = entry; }
-  CacheEntryID next_bucket_element() const { return next_bucket_element_; }
-  bool is_free() const {
-    if (father_ == std::numeric_limits<uint32_t>::max())
-      assert (model_count_ == nullptr);
-    return father_ == std::numeric_limits<uint32_t>::max();
+  [[nodiscard]] uint64_t last_used_time() const { return last_used_time_; }
+  void set_last_used_time(uint64_t time) { last_used_time_ = time; }
+  void avg_last_used_time(uint64_t time, uint64_t div) {
+    assert(time >= last_used_time_);
+    last_used_time_ += (time-last_used_time_)/div;
   }
-  void set_free() {
-    father_ = std::numeric_limits<uint32_t>::max();
-    T::set_free();
-    model_count_.reset();
-    model_count_is_zero_ = false; // also clear zero-count sentinel
+  [[nodiscard]] bool is_deletable() const { return delete_permitted; }
+  void set_deletable() { delete_permitted = true; }
+  void reset_meta(uint64_t time) {
+    last_used_time_ = time;
+    delete_permitted = false;
+    cnt_state = cnt_none;
   }
-  // low 64-bit word -- used to index the cache hash table (table is power-of-two sized)
+
+  [[nodiscard]] bool model_count_found() const { return cnt_state != cnt_none; }
+  void set_model_count(const FF& rn, const bool int_inline) {
+    assert(cnt_state == cnt_none);
+    if (rn == nullptr) return;
+    // zero is a valid model count (UNSAT component), cache it too
+    if (rn->is_zero()) { cnt_state = cnt_zero; return; }
+    if (int_inline && SmallIntCodec::pack(*rn, cnt.small)) { cnt_state = cnt_inline; return; }
+    cnt.heap = rn->dup().release();
+    cnt_state = cnt_heap;
+  }
+  [[nodiscard]] bool count_is_inline() const { return cnt_state == cnt_inline; }
+  // nullptr means zero. scratch must be an FMpz, used for inline counts
+  const CMSat::Field* model_count(CMSat::Field& scratch) const {
+    switch (cnt_state) {
+      case cnt_inline: SmallIntCodec::unpack(cnt.small, scratch); return &scratch;
+      case cnt_heap: return cnt.heap;
+      default: assert(cnt_state == cnt_zero); return nullptr;
+    }
+  }
+
+  void release() {
+    if (cnt_state == cnt_heap) delete cnt.heap;
+    cnt_state = cnt_none;
+    T::release();
+  }
+
   uint64_t get_hashkey() const  { return hashkey.hash; }
-  auto get_full_hashkey() const  { return hashkey; }
-  uint64_t extra_bytes() const {
-    return BaseComp::bignum_bytes() + T::comp_bytes();
+  const HashVal& get_full_hashkey() const  { return hashkey; }
+  [[nodiscard]] uint64_t extra_bytes() const {
+    return (cnt_state == cnt_heap ? cnt.heap->bytes_used() : 0) + T::comp_bytes();
   }
-  auto equals(const CacheableComp<T>& other) const {
+  // hashkey matches, but the content (if stored) differs
+  [[nodiscard]] bool content_differs(const CacheableComp<T>& other) const {
+    return !T::equals(other);
+  }
+  bool equals(const CacheableComp<T>& other) const {
     // full 128-bit key compare (collision needs BOTH words to match, ~2^-128) plus,
     // for the content-comparing variant, the exact-content check in T::equals()
     return hashkey == other.hashkey && T::equals(other);
@@ -80,14 +129,13 @@ public:
 
 private:
   HashVal hashkey;
-  CacheEntryID next_bucket_element_ = 0;
-
-  // father and descendants:
-  // each CacheEntry is a Node in a tree which represents the relationship
-  // of the comps stored
-  CacheEntryID father_ = 0;
-  CacheEntryID first_descendant_ = 0;
-  CacheEntryID next_sibling_ = 0;
+  union {
+    CMSat::Field* heap;
+    uint64_t small[2];
+  } cnt = {nullptr};
+  uint64_t last_used_time_:61 = 1; //effectively the score
+  uint64_t delete_permitted:1 = false;
+  uint64_t cnt_state:2 = cnt_none;
 };
 
 }

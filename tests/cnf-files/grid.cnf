@@ -2,6 +2,7 @@ c c Independent sets of the 4x4 grid graph = 1234 (brute-forced).
 c c Same instance, same answer under a wide spread of search options and in
 c c every field mode -- the cross-mode/cross-option consistency test.
 c c RUN: %solver %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --groupedsweep 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --cache 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --maxcache 1 --lru 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --threads 4 %s | %OutputCheck %s --check-prefix=INT
@@ -10,6 +11,8 @@ c c RUN: %solver --debugthreads 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --restart 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --td 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --arjun 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --arjun 0 --frontierstates 2 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --arjun 0 --frontierstates 8192 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --puura 0 --sbvasteps 0 --vivif 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --polar 2 --decide 1 --initact 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --shrink 0 --bumpreason 0 %s | %OutputCheck %s --check-prefix=INT

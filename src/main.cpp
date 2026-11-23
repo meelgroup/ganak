@@ -50,6 +50,7 @@ THE SOFTWARE.
 #include <treedecomp/treedecomp_version.hpp>
 #include "file_read_helper.h"
 #include "color_count.hpp"
+#include "placement_count.hpp"
 
 static constexpr uint32_t max_digit_precision = 1e6;
 
@@ -142,6 +143,9 @@ int strip_opt_indep = 0;
 int color_cnt = 1;
 uint64_t color_nodes = 250000;
 uint64_t color_dom_nodes = 180000000;
+int placement_cnt = 1;
+uint64_t placement_budget = 2000000000;
+uint64_t placement_max_domain = 200000;
 uint32_t shuffle_vars_seed = 0;
 FG fg = nullptr;
 
@@ -359,6 +363,9 @@ void add_ganak_options()
     add_arg("--colorcnt", color_cnt, "If the whole (unweighted, unprojected) input CNF is a graph coloring encoding, count the colorings directly");
     add_arg("--colornodes", color_nodes, "Node budget of the direct coloring search before the domain search");
     add_arg("--colordomnodes", color_dom_nodes, "Node budget of the 4/5-color domain search, 0 = unlimited. Over budget: fall back to normal counting");
+    add_arg("--placementcnt", placement_cnt, "If the whole (unweighted, unprojected) input CNF is a labeled exact cover (Sudoku, Latin square, ...), count by branching on whole placements of a label");
+    add_arg("--placementbudget", placement_budget, "Work budget of the placement counter. Over budget: fall back to normal counting");
+    add_arg("--placementdomain", placement_max_domain, "Maximum placements per label in the placement counter. More: fall back to normal counting");
     add_arg("--shufflevars", shuffle_vars_seed, "After Arjun, randomly renumber vars (within the no-touch/indep/opt-indep/rest blocks) and shuffle clause order, with this seed. The count is unchanged: measures how much solve time depends on presentation. 0 = off");
 
     // Analyze candidates options
@@ -961,9 +968,10 @@ int main(int argc, char *argv[]) {
     for (const auto& v : cnf.get_sampl_vars()) conf.compile_proj.push_back(v + 1);
   }
 
-  if (color_cnt && mode == 0 && !cnf.get_weighted() && !cnf.get_projected()
+  const bool whole_unweighted_cnf = mode == 0 && !cnf.get_weighted() && !cnf.get_projected()
       && cnf.get_sampl_vars().size() == cnf.nVars() && cnf.get_red_clauses().empty()
-      && conf.compile_fname.empty() && debug_arjun_cnf.empty()) {
+      && conf.compile_fname.empty() && debug_arjun_cnf.empty();
+  if (color_cnt && whole_unweighted_cnf) {
     if (auto g = GanakInt::color::decode(cnf.nVars(), cnf.get_clauses())) {
       const double t = cpu_time();
       uint64_t edges = 0;
@@ -978,6 +986,26 @@ int main(int argc, char *argv[]) {
         return 0;
       }
     }
+  }
+
+  if (placement_cnt && whole_unweighted_cnf) {
+    const double t = cpu_time();
+    if (auto p = GanakInt::placement::decode(cnf.nVars(), cnf.get_clauses())) {
+      GanakInt::placement::Stats st;
+      auto c = GanakInt::placement::count(*p, placement_budget, placement_max_domain, st);
+      std::stringstream doms;
+      for (auto d : st.domains) doms << " " << d;
+      verb_print(1, "[placement] " << p->certificate << " exact cover: " << p->cells << " cells, "
+        << p->scopes.size() << " labels, placements per label:" << doms.str()
+        << " enum nodes: " << st.enum_nodes << " join nodes: " << st.join_nodes
+        << (st.fast_join ? " (bit-parallel join)" : "") << ": "
+        << (c ? "counted" : "over budget, counting normally") << " T: " << (cpu_time()-t));
+      if (c) {
+        Ganak counter(conf, fg);
+        run_weighted_counter(counter, cnf, start_time, &*c);
+        return 0;
+      }
+    } else verb_print(2, "[placement] not a labeled exact cover T: " << (cpu_time()-t));
   }
 
   // Run Arjun

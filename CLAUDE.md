@@ -86,6 +86,17 @@ encoding. count_fuzzer never generates those, so use `scripts/fuzz_color.py
 recognized, random `--colornodes`/`--colordomnodes` budgets, checked against
 `--colorcnt 0`. Failures land in `fuzz-color-out/`.
 
+### Placement fuzzer (after touching `src/placement_count.hpp`)
+
+`--placementcnt` (on by default) counts the models directly when the whole
+unweighted, unprojected input is a labeled exact cover: Sudokus of any box
+shape, Latin squares, diagonal and irregular-region variants. count_fuzzer never
+generates those, so use `scripts/fuzz_placement.py --num 300`: random puzzles in
+the pairwise and the capacity encoding, with clues, excluded values, renamed
+variables, mutations, and random `--placementbudget`/`--placementdomain`
+budgets, checked against `--placementcnt 0`. Failures land in
+`fuzz-placement-out/`.
+
 ### ganak-model fuzzer (after touching `src/gmodel_*` or the web page's model tab)
 
 `scripts/fuzz_gmodel.py --num 500` builds random models (its own syntax trees,

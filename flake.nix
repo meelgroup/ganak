@@ -2,22 +2,17 @@
   description = "A Scalable Probabilistic Exact Model Counter";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    # cadiback and evalmaxsat are not used by ganak directly, but our deps
-    # (cryptominisat, arjun, approxmc) pull them in. Declare them here as
-    # single anchors so the whole tree shares one of each instead of
-    # duplicating them many times in flake.lock.
-    cadiback = {
+    # meel-cadiback is not used by ganak directly, but our deps
+    # (cryptominisat, arjun, approxmc) pull it in. Declare it here as a single anchor
+    # so the whole tree shares one instead of duplicating it in flake.lock.
+    meel-cadiback = {
       url = "github:meelgroup/cadiback/main";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    evalmaxsat = {
-      url = "github:meelgroup/EvalMaxSAT/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     cryptominisat = {
       url = "github:msoos/cryptominisat/master";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.cadiback.follows = "cadiback";
+      inputs.meel-cadiback.follows = "meel-cadiback";
     };
     sbva = {
       url = "github:meelgroup/sbva/master";
@@ -30,24 +25,19 @@
     arjun = {
       url = "github:meelgroup/arjun/master";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.cadiback.follows = "cadiback";
-      inputs.cadical.follows = "cadiback/cadical";
+      inputs.meel-cadiback.follows = "meel-cadiback";
+      inputs.meel-cadical.follows = "meel-cadiback/meel-cadical";
       inputs.cryptominisat.follows = "cryptominisat";
       inputs.sbva.follows = "sbva";
-      inputs.evalmaxsat.follows = "evalmaxsat";
       inputs.treedecomp.follows = "treedecomp";
     };
     approxmc = {
       url = "github:meelgroup/approxmc/master";
       inputs.nixpkgs.follows = "nixpkgs";
-      # The cadiback follows is ignored on the old pre-dedup approxmc master
-      # (which has no cadiback input) but activates once that flake declares
-      # it. Everything else matches today.
-      inputs.cadiback.follows = "cadiback";
+      inputs.meel-cadiback.follows = "meel-cadiback";
       inputs.arjun.follows = "arjun";
       inputs.cryptominisat.follows = "cryptominisat";
       inputs.sbva.follows = "sbva";
-      inputs.evalmaxsat.follows = "evalmaxsat";
       inputs.treedecomp.follows = "treedecomp";
     };
     # breakid = {
@@ -60,13 +50,12 @@
     {
       self,
       nixpkgs,
-      cadiback,
+      meel-cadiback,
       arjun,
       approxmc,
       # breakid,
       cryptominisat,
       sbva,
-      evalmaxsat,
       treedecomp,
     }:
     let
@@ -92,7 +81,6 @@
           approxmc,
           python3,
           python3Packages,
-          # evalmaxsat,
           treedecomp,
         }:
         stdenv.mkDerivation {
@@ -120,7 +108,6 @@
             sbva
             # breakid
             approxmc
-            # evalmaxsat
             treedecomp
           ];
           src = ./.;
@@ -154,7 +141,6 @@
             sbva = sbva.packages.${system}.sbva;
             # breakid = breakid.packages.${system}.breakid;
             approxmc = approxmc.packages.${system}.approxmc;
-            # evalmaxsat = evalmaxsat.packages.${system}.evalmaxsat;
             treedecomp = treedecomp.packages.${system}.treedecomp;
           };
         in

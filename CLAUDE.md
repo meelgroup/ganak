@@ -65,6 +65,7 @@ cd ../count_fuzzer
 ./fuzz.py --buddy                # fuzz buddy too
 ./fuzz.py --threads K            # fuzz with --threads K passed to ganak
 ./fuzz.py -t T                   # per-instance timeout (default 4s)
+./fuzz.py --valgrind P           # P% of ganak runs under valgrind (default 1); any error fails
 ./fuzz.py                        # non-stop: EVERYTHING (cpx, proj, weighted, ...)
 ```
 

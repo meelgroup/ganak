@@ -43,7 +43,7 @@ struct Cmd {
   const char* help;
 };
 const Cmd cmds[] = {
-  {"verify", bdnnf_verify, "check the format and every claimed property"},
+  {"verify", bdnnf_verify, "check the format, every claimed property, and (--cnf) the CNF"},
   {"count", bdnnf_query, "weighted/projected model count, under --assume"},
   {"sample", bdnnf_query, "weighted/uniform random models, under --assume"},
   {"enum", bdnnf_query, "enumerate the models, from --start I, -n at most"},

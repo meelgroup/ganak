@@ -4,7 +4,7 @@ c c another one, which leaked into the arc-lits (var 16 in two AND children).
 c c The circuit must be decomposable as written.
 c c
 c c RUN: %solver --compile %t.bdnnf %s
-c c RUN: %bdnnf verify %t.bdnnf --expect-count 5897
+c c RUN: %bdnnf verify %t.bdnnf --cnf %s --expect-count 5897
 c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
 p cnf 16 40
 -6 -14 2 4 0

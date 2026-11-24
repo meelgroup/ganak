@@ -1,8 +1,8 @@
 c c d-DNNF compile, issue #132: a flipped decision literal must backjump in
 c c compile mode, or what it implies in a sibling comp is on no arc and the
 c c circuit has extra models.
-c c RUN: %solver --compilecheck 1 --compile %t.bdnnf %s
-c c RUN: %bdnnf verify %t.bdnnf --cnf %s --expect-count 59666838756244564200370863880295814266880
+c c RUN: %solver --compilecheck 1 --compilecheckthorough 1 --arjundebugcnf %t.fp.cnf --compile %t.bdnnf %s
+c c RUN: %bdnnf verify %t.bdnnf --cnf %t.fp.cnf --cnf %s --expect-count 59666838756244564200370863880295814266880
 c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
 c t mc
 p cnf 160 230

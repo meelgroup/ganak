@@ -3,8 +3,8 @@ c c records a witness for the projected-out vars {3,4}, so the structural count
 c c is the projected count (2), not the total model count. We pin the projected
 c c count, decomposability, and that every model of the circuit satisfies the CNF.
 c p show 1 2 0
-c c RUN: %solver --compile %t.bdnnf %s
-c c RUN: %bdnnf verify %t.bdnnf --cnf %s --expect-count 2
+c c RUN: %solver --compilecheckthorough 1 --arjundebugcnf %t.fp.cnf --compile %t.bdnnf %s
+c c RUN: %bdnnf verify %t.bdnnf --cnf %t.fp.cnf --cnf %s --expect-count 2
 c c RUN: %bdnnf dot %t.bdnnf %t.dot
 p cnf 4 4
 1 2 0

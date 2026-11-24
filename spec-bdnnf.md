@@ -101,7 +101,11 @@ Header payload:
 Keys and values are UTF-8 strings. Defined keys: `producer` (e.g.
 `ganak 1.2.3 <sha>`), and `projection`: the projection variables, decimal,
 space-separated (may be empty; absent: all of `1..nvars`). Projected queries (count, sample,
-conditioning) are over these variables. Readers ignore unknown keys. Ganak
+conditioning) are over these variables. `projection-defined`: variables outside
+the projection that are functions of it; two arcs of an OR may differ only on
+one of these and the projected count stays right. In a projected file every
+two arcs of an OR must have complementary literals on a projection or
+projection-defined variable. Readers ignore unknown keys. Ganak
 also writes `input` (the CNF file), `command` (its command line), and the
 version (SHA1) of each component: `arjun`, `sbva`, `cryptominisat`, `cadical`,
 `cadiback`, `approxmc`, `treedecomp`. Unknown `version` values

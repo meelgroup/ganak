@@ -111,8 +111,12 @@ Uses `build/ganak-model`, `build/ganak`, `build/bdnnf`.
 count_fuzzer checks it with `--bdnnf PERC` (default 20% of tests; `--bdnnf 100`
 for all; `--compile` for all, skipping the other counters so it runs several
 times more compile tests per minute): it compiles with ganak, then checks the circuit
-with scalable C++ tools only — `bdnnf verify --cnf` (format + every claimed property,
-streamed, and every circuit model satisfies every clause, exactly), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
+with scalable C++ tools only — `bdnnf verify --cnf F' --cnf F` (format + every
+claimed property, streamed, and every circuit model satisfies every clause,
+exactly; F' is the CNF the circuit is compiled from, written by `ganak
+--arjundebugcnf FILE` in the input's numbering; clauses of F with a defined var
+are skipped, 1 in 10 compiles checks them with `--compilecheckthorough`: Arjun's
+definitions against F and the projection-defined vars by Padoa, by SAT calls), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
 checked against the clauses, `--assume` conditioning on random literals, and the
 count under fresh random weights), all against ganak; `bdnnf lits`/`core`/`batch`/`atomic`/`opt`
 against `bdnnf count --assume`/`opt --assume`, `bdnnf twise` (uncovered tuples

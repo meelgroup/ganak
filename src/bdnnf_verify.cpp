@@ -80,6 +80,17 @@ Streamed streamed_check(const std::string& path, bool det, bool decomp, bool smo
   auto bit = [](uint64_t* s, uint32_t v) { return (s[v >> 6] >> (v & 63)) & 1; };
   auto set = [](uint64_t* s, uint32_t v) { s[v >> 6] |= 1ULL << (v & 63); };
   auto fail_once = [&](const std::string& m) { if (out.err.empty()) out.err = m; };
+  // Projected: arcs must also differ on the projection, or the projected count
+  // adds a projection twice. A var outside it that is a function of the
+  // projection (header key projection-defined) separates them too.
+  std::vector<char> sep(r.nvars + 1, 1);
+  const bool projected = r.has(r.header_kv, "projection");
+  if (projected) {
+    sep.assign(r.nvars + 1, 0);
+    for (const char* key : {"projection", "projection-defined"})
+      for (uint32_t v : bdnnf::parse_var_list(r.get(r.header_kv, key)))
+        if (v >= 1 && v <= r.nvars) sep[v] = 1;
+  }
   r.scan([&](uint64_t id, const bdnnf::Node& nd) {
     mpz_class x;
     if (nd.kind == bdnnf::K_AND) {
@@ -110,12 +121,20 @@ Streamed streamed_check(const std::string& path, bool det, bool decomp, bool smo
       if (det)
         for (size_t i = 0; i < nd.arcs.size(); i++)
           for (size_t j = i + 1; j < nd.arcs.size(); j++) {
-            bool clash = false;
+            bool clash = false, sep_clash = false;
             for (int l : nd.arcs[i].lits)
-              for (int m : nd.arcs[j].lits) clash |= (l == -m);
+              for (int m : nd.arcs[j].lits)
+                if (l == -m) {
+                  clash = true;
+                  sep_clash |= sep[(uint32_t)std::abs(l)] != 0;
+                }
             if (!clash)
               fail_once("OR " + std::to_string(id) + " arcs " + std::to_string(i) + " and " +
                         std::to_string(j) + " share no complementary literal (not DETERMINISTIC)");
+            else if (!sep_clash)
+              fail_once("OR " + std::to_string(id) + " arcs " + std::to_string(i) + " and " +
+                        std::to_string(j) + " differ only outside the projection: the projected count adds "
+                        "their common projections twice");
           }
       if (sets) {
         uint64_t* me = row(id);
@@ -236,41 +255,27 @@ mpz_class model_count(const std::string& path) {
 
 // --cnf: every model of the file satisfies every clause, i.e. the circuit and
 // the clause's negation have no common model. On a decomposable circuit that is
-// a bottom-up SAT pass, 64 queries per pass, over all vars: the projection does
-// not matter, a var on no path takes any value. A clause with defined vars
-// becomes one query per assignment to the vars their definitions read that
-// falsifies them, if they read at most kMaxDefSupport vars beyond the clause's.
-constexpr size_t kMaxDefSupport = 10;
-
+// a bottom-up SAT pass, 64 clauses per pass, over all vars: the projection does
+// not matter, a var on no path takes any value. A clause with a defined var is
+// skipped: check the circuit against the CNF it was compiled from (ganak
+// --arjundebugcnf), which has none, and the definitions with ganak
+// --compilecheckthorough.
 struct CnfCheck {
-  uint64_t clauses = 0, with_defs = 0, skipped = 0;
+  uint64_t clauses = 0, skipped = 0;
   std::string err;
 };
 
-CnfCheck check_cnf(const std::string& path, const std::string& cnf_path) {
-  bdnnf::Reader r;
-  r.open(path);
+CnfCheck check_cnf(bdnnf::Reader& r, const std::string& cnf_path) {
   const uint32_t nv = r.nvars;
   const size_t n = (size_t)r.nnodes + 2;
-  // the definitions are decoded by a scan; small circuits stay in memory for the
-  // passes that follow
-  if (std::filesystem::file_size(path) <= (64ULL << 20)) r.cache_all();
-  else r.scan([](uint64_t, const bdnnf::Node&) {});
-  const bdnnf::Defs& defs = r.defs;
-  {
-    std::vector<signed char> tmp(nv + 1, 0);
-    bdnnf::eval_defs(defs, nv, tmp);  // throws on a cycle, so the walks below end
-  }
-  std::vector<uint64_t> def_of((size_t)nv + 1, UINT64_MAX);
-  for (const auto& [v, rf] : defs.defs) def_of[v] = rf;
-  const uint64_t node_base = (uint64_t)nv + 1;
+  std::vector<char> defined((size_t)nv + 1, 0);
+  for (const auto& [v, rf] : r.defs.defs) defined[v] = 1;
 
   CnfCheck out;
   auto lidx = [](int l) { return 2 * (size_t)std::abs(l) + (l < 0 ? 1 : 0); };
   std::vector<uint64_t> kill(2 * (size_t)nv + 2, 0), sm(n, 0);
   std::vector<std::vector<int>> qs;
-  std::vector<uint64_t> qcl;  // clause index of each query
-  std::vector<std::vector<int>> cls;
+  std::vector<std::vector<int>> cls;  // of the queries in qs
 
   auto run_chunk = [&]() {
     if (qs.empty() || !out.err.empty()) return;
@@ -297,183 +302,58 @@ CnfCheck check_cnf(const std::string& path, const std::string& cnf_path) {
       sm[id] = m;
     });
     const uint64_t sat = sm[r.root];
-    for (size_t j = 0; j < k; j++) {
+    for (size_t j = 0; j < k && out.err.empty(); j++) {
       if (!((sat >> j) & 1)) continue;
-      std::string m = "clause " + std::to_string(qcl[j] + 1) + " (";
-      for (int l : cls[qcl[j]]) m += std::to_string(l) + " ";
-      m += "0) is not implied: the circuit has a model with";
-      for (int l : qs[j]) m += " " + std::to_string(l);
-      out.err = m;
-      break;
+      out.err = "clause (";
+      for (int l : cls[j]) out.err += std::to_string(l) + " ";
+      out.err += "0) of " + cnf_path + " is not implied: the circuit has a model with";
+      for (int l : qs[j]) out.err += " " + std::to_string(l);
     }
     for (size_t j = 0; j < k; j++)
       for (int l : qs[j]) kill[lidx(-l)] = 0;
     qs.clear();
-    qcl.clear();
+    cls.clear();
   };
-  auto add_query = [&](std::vector<int> q, uint64_t ci) {
+
+  std::ifstream f(cnf_path);
+  if (!f.good()) throw bdnnf::Error("cannot open " + cnf_path);
+  std::string line;
+  std::vector<int> cl;
+  auto add_clause = [&]() {
+    out.clauses++;
+    bool taut = false, has_def = false;
+    for (int l : cl) {
+      has_def |= defined[(uint32_t)std::abs(l)] != 0;
+      taut |= std::find(cl.begin(), cl.end(), -l) != cl.end();
+    }
+    if (taut || has_def) {
+      out.skipped += has_def ? 1 : 0;
+      cl.clear();
+      return;
+    }
+    std::vector<int> q;
+    for (int l : cl) if (std::find(q.begin(), q.end(), -l) == q.end()) q.push_back(-l);
     qs.push_back(std::move(q));
-    qcl.push_back(ci);
+    cls.push_back(cl);
+    cl.clear();
     if (qs.size() == 64) run_chunk();
   };
-
-  // Walks over the definitions, with stamps instead of clearing per clause.
-  std::vector<uint32_t> vstamp((size_t)nv + 1, 0), nstamp(defs.nodes.size(), 0);
-  std::vector<signed char> vval((size_t)nv + 1, 0), nval(defs.nodes.size(), 0);
-  uint32_t stamp = 0;
-  auto next_stamp = [&]() {
-    if (++stamp == 0) {
-      std::fill(vstamp.begin(), vstamp.end(), 0);
-      std::fill(nstamp.begin(), nstamp.end(), 0);
-      stamp = 1;
-    }
-  };
-  // undefined vars read by the definitions of `dvars`, at most `cap` beyond `fixed`
-  auto support = [&](const std::vector<uint32_t>& dvars, const std::vector<char>& fixed,
-                     std::vector<uint32_t>& sup, size_t cap) {
-    next_stamp();
-    sup.clear();
-    std::vector<uint64_t> st;
-    for (uint32_t v : dvars) st.push_back((uint64_t)v << 1);
-    while (!st.empty()) {
-      const uint64_t k = st.back() >> 1;
-      st.pop_back();
-      if (k == 0) continue;
-      if (k < node_base) {
-        const uint32_t v = (uint32_t)k;
-        if (vstamp[v] == stamp) continue;
-        vstamp[v] = stamp;
-        if (def_of[v] != UINT64_MAX) { st.push_back(def_of[v]); continue; }
-        if (fixed[v]) continue;
-        sup.push_back(v);
-        if (sup.size() > cap) return false;
+  while (std::getline(f, line) && out.err.empty()) {
+    if (line.empty() || line[0] == 'c' || line[0] == 'p') continue;
+    std::istringstream ss(line);
+    long x;
+    while (ss >> x) {
+      if (x == 0) {
+        if (!cl.empty()) add_clause();
         continue;
       }
-      const size_t j = (size_t)(k - node_base);
-      if (nstamp[j] == stamp) continue;
-      nstamp[j] = stamp;
-      st.push_back(defs.nodes[j].first);
-      st.push_back(defs.nodes[j].second);
+      if ((uint64_t)std::labs(x) > nv)
+        throw bdnnf::Error("CNF var " + std::to_string(std::labs(x)) + " is beyond the circuit's " +
+                           std::to_string(nv) + " vars");
+      cl.push_back((int)x);
     }
-    return true;
-  };
-  // value of a defined var from `val` (the undefined vars it reads must be set)
-  auto eval_def = [&](uint32_t v0, const std::vector<signed char>& val) {
-    next_stamp();
-    auto known = [&](uint64_t ref, bool& x) {
-      const uint64_t k = ref >> 1;
-      if (k == 0) x = true;
-      else if (k < node_base) {
-        const uint32_t v = (uint32_t)k;
-        if (def_of[v] == UINT64_MAX) x = val[v] > 0;
-        else if (vstamp[v] == stamp) x = vval[v] > 0;
-        else return false;
-      } else {
-        const size_t j = (size_t)(k - node_base);
-        if (nstamp[j] != stamp) return false;
-        x = nval[j] > 0;
-      }
-      if (ref & 1) x = !x;
-      return true;
-    };
-    std::vector<uint64_t> st{(uint64_t)v0 << 1};
-    while (!st.empty()) {
-      const uint64_t ref = st.back();
-      bool x;
-      if (known(ref, x)) { st.pop_back(); continue; }
-      const uint64_t k = ref >> 1;
-      if (k < node_base) {
-        const uint32_t v = (uint32_t)k;
-        bool y;
-        if (known(def_of[v], y)) {
-          vstamp[v] = stamp;
-          vval[v] = y ? 1 : -1;
-          st.pop_back();
-        } else st.push_back(def_of[v]);
-        continue;
-      }
-      const size_t j = (size_t)(k - node_base);
-      const auto [a, b] = defs.nodes[j];
-      bool xa, xb;
-      const bool ka = known(a, xa), kb = known(b, xb);
-      if (ka && kb) {
-        nstamp[j] = stamp;
-        nval[j] = xa && xb ? 1 : -1;
-        st.pop_back();
-        continue;
-      }
-      if (!ka) st.push_back(a);
-      if (!kb) st.push_back(b);
-    }
-    bool x = false;
-    known((uint64_t)v0 << 1, x);
-    return x;
-  };
-
-  std::vector<char> fixed((size_t)nv + 1, 0);
-  std::vector<signed char> val((size_t)nv + 1, 0);
-  std::vector<uint32_t> dvars, sup;
-  {
-    std::ifstream f(cnf_path);
-    if (!f.good()) throw bdnnf::Error("cannot open " + cnf_path);
-    std::string line;
-    std::vector<int> cl;
-    while (std::getline(f, line)) {
-      if (line.empty() || line[0] == 'c' || line[0] == 'p') continue;
-      std::istringstream ss(line);
-      long x;
-      while (ss >> x) {
-        if (x == 0) {
-          if (!cl.empty()) cls.push_back(cl);
-          cl.clear();
-          continue;
-        }
-        if ((uint64_t)std::labs(x) > nv)
-          throw bdnnf::Error("CNF var " + std::to_string(std::labs(x)) + " is beyond the circuit's " +
-                             std::to_string(nv) + " vars");
-        cl.push_back((int)x);
-      }
-    }
-    if (!cl.empty()) cls.push_back(cl);
   }
-
-  for (uint64_t ci = 0; ci < cls.size() && out.err.empty(); ci++) {
-    const auto& cl = cls[ci];
-    out.clauses++;
-    bool taut = false;
-    for (int l : cl) taut |= std::find(cl.begin(), cl.end(), -l) != cl.end();
-    if (taut) continue;
-    std::vector<int> neg;  // the clause's undefined lits, negated
-    dvars.clear();
-    for (int l : cl) {
-      const uint32_t v = (uint32_t)std::abs(l);
-      if (def_of[v] != UINT64_MAX) {
-        if (std::find(dvars.begin(), dvars.end(), v) == dvars.end()) dvars.push_back(v);
-      } else if (std::find(neg.begin(), neg.end(), -l) == neg.end()) neg.push_back(-l);
-    }
-    if (dvars.empty()) { add_query(std::move(neg), ci); continue; }
-    out.with_defs++;
-    for (int l : neg) fixed[(uint32_t)std::abs(l)] = 1;
-    const bool small = support(dvars, fixed, sup, kMaxDefSupport);
-    for (int l : neg) fixed[(uint32_t)std::abs(l)] = 0;
-    if (!small) { out.skipped++; continue; }
-    for (int l : neg) val[(uint32_t)std::abs(l)] = l > 0 ? 1 : -1;
-    for (uint64_t t = 0; t < (1ULL << sup.size()) && out.err.empty(); t++) {
-      for (size_t i = 0; i < sup.size(); i++) val[sup[i]] = (t >> i) & 1 ? 1 : -1;
-      bool falsified = true;
-      for (int l : cl) {
-        const uint32_t v = (uint32_t)std::abs(l);
-        if (def_of[v] == UINT64_MAX) continue;
-        if (eval_def(v, val) == (l > 0)) { falsified = false; break; }
-      }
-      if (!falsified) continue;
-      std::vector<int> q = neg;
-      for (uint32_t v : sup) q.push_back(val[v] > 0 ? (int)v : -(int)v);
-      add_query(std::move(q), ci);
-    }
-    for (int l : neg) val[(uint32_t)std::abs(l)] = 0;
-    for (uint32_t v : sup) val[v] = 0;
-  }
+  if (!cl.empty()) add_clause();
   run_chunk();
   return out;
 }
@@ -506,15 +386,16 @@ int bdnnf_verify(int argc, char** argv) {
   bool have_expect = false;
   bool quiet = false;
   bool any_opt = false;
-  std::string cnf;
+  std::vector<std::string> cnfs;
 
   auto usage = [&]() {
     std::cerr <<
       "Usage: bdnnf verify <in.bdnnf>\n"
       "         [--expect-count N] [--cnf F] [-q|--quiet]\n"
       "\n"
-      "With no option, prints the structural count. --cnf F: every model of the\n"
-      "file must satisfy every clause of F (checked exactly, not by sampling).\n";
+      "With no option, prints the structural count. --cnf F (repeatable): every\n"
+      "model of the file must satisfy every clause of F without a defined var\n"
+      "(checked exactly, not by sampling).\n";
     std::exit(EXIT_FAILURE);
   };
 
@@ -536,7 +417,7 @@ int bdnnf_verify(int argc, char** argv) {
     }
     else if (a == "--cnf") {
       if (i + 1 >= argc) usage();
-      cnf = argv[++i];
+      cnfs.emplace_back(argv[++i]);
       any_opt = true;
     }
     else if (!a.empty() && a[0] == '-' && a != "-") {
@@ -579,14 +460,20 @@ int bdnnf_verify(int argc, char** argv) {
       const std::string e = check_clean(path, st);
       if (!e.empty()) fail(e);
     }
-    if (!cnf.empty()) {
-      const CnfCheck cc = check_cnf(path, cnf);
-      if (!cc.err.empty()) fail(cc.err);
-      if (cc.skipped)
-        std::cerr << "bdnnf verify: " << cc.skipped << " of the " << cc.with_defs << " clauses with defined vars"
-                  << " not checked: their definitions read over " << kMaxDefSupport << " other vars\n";
-      if (!quiet)
-        std::cout << "bdnnf verify: every model satisfies the " << cc.clauses << " clauses of " << cnf << "\n";
+    if (!cnfs.empty()) {
+      bdnnf::Reader r;
+      r.open(path);
+      // small circuits stay in memory for the passes; a scan decodes the definitions
+      if (std::filesystem::file_size(path) <= (64ULL << 20)) r.cache_all();
+      else r.scan([](uint64_t, const bdnnf::Node&) {});
+      for (const auto& cnf : cnfs) {
+        const CnfCheck cc = check_cnf(r, cnf);
+        if (!cc.err.empty()) fail(cc.err);
+        if (!quiet)
+          std::cout << "bdnnf verify: every model satisfies the " << cc.clauses - cc.skipped << " clauses of "
+                    << cnf << (cc.skipped ? " without a defined var (" + std::to_string(cc.skipped) +
+                               " have one)" : std::string()) << "\n";
+      }
     }
     if (!quiet)
       std::cout << "bdnnf verify: OK (count=" << st.count.get_str() << ", nodes=" << st.nnodes << ")\n";

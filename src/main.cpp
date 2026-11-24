@@ -30,10 +30,12 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "time_mem.hpp"
 
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 #include <iomanip>
 #include <gmpxx.h>
@@ -129,6 +131,7 @@ int arjun_backw_maxc = 20000;
 ArjunNS::Arjun::ElimToFileConf etof_conf;
 ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
+int compile_check_thorough = 0;
 int arjun_oracle_find_bins = 6;
 double arjun_cms_glob_mult = -1.0;
 int arjun_cms_abs_budget = 1;
@@ -221,6 +224,7 @@ void add_ganak_options()
 
     // d-DNNF compilation
     add_arg("--compilecheck", conf.compile_check, "With --compile, check every node of the circuit as it is written (decomposable, deterministic, smooth if unprojected, and counting what was counted for its level), and abort at the first wrong one");
+    add_arg("--compilecheckthorough", compile_check_thorough, "With --compile, also check by SAT calls that Arjun's definitions extend every model of the CNF the circuit is compiled from to a model of the input, and that the vars the circuit branches on outside the projection are defined by it");
     add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (BDNNF binary format, see spec-bdnnf.md). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify/BCE). Arjun only runs steps that keep every model, and never eliminates a projection var; the circuit is over the input's vars, with AIG (Skolem) definitions for the eliminated non-projection vars.");
 
     // Arjun options
@@ -267,7 +271,7 @@ void add_ganak_options()
     add_arg("--extraoracle", simp_conf.oracle_extra, "Extra oracle at the end of puura");
     add_arg("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, "Sets relevant CMS option: subsume other clauses with resolvent clauses");
     add_arg("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, "Arjun's oracle should get learnts");
-    add_arg("--arjundebugcnf", debug_arjun_cnf, "Write debug arjun CNF into this file");
+    add_arg("--arjundebugcnf", debug_arjun_cnf, "Write debug arjun CNF into this file. With --compile: the CNF the circuit is compiled from, over the input's vars");
     add_arg("--arjuncmsmult", arjun_cms_glob_mult,  "Pass this multiplier to CMSat through Arjun");
     add_arg("--arjuncmsabsbudget", arjun_cms_abs_budget, "CMSat inside Arjun: absolute intree/distill budgets instead of search-relative ones");
     add_arg("--arjuncmssweep", arjun_cms_sweep, "CMSat inside Arjun: SAT sweeping (occ-sweep)");
@@ -662,6 +666,162 @@ void set_compile_map(const ArjunNS::SimplifiedCNF& cnf, const bool with_arjun) {
   }
 }
 
+// The CNF the circuit is compiled from, over the input's vars: the simplified
+// clauses with one input lit per internal lit, the input lits equivalent to
+// each internal var, and the root units. Every model of the circuit satisfies it.
+vector<vector<int>> compile_cnf_clauses(const ArjunNS::SimplifiedCNF& cnf) {
+  const auto& m = conf.compile_lit_map;
+  auto in_lit = [&](const CMSat::Lit l) {
+    release_assert(l.var() < m.size() && !m[l.var()].empty());
+    return l.sign() ? -m[l.var()][0] : m[l.var()][0];
+  };
+  vector<vector<int>> r;
+  for (const auto& cl : cnf.get_clauses()) {
+    vector<int> c;
+    for (const auto& l : cl) c.push_back(in_lit(l));
+    r.push_back(std::move(c));
+  }
+  for (const auto& ls : m)
+    for (size_t i = 1; i < ls.size(); i++) {
+      r.push_back({-ls[0], ls[i]});
+      r.push_back({ls[0], -ls[i]});
+    }
+  for (int u : conf.compile_root_units) r.push_back({u});
+  return r;
+}
+
+void write_compile_cnf(const string& fname, const vector<vector<int>>& cls) {
+  std::ofstream f(fname);
+  f << "p cnf " << conf.compile_nvars << " " << cls.size() << "\n";
+  if (conf.compile_projected) {
+    f << "c p show ";
+    for (uint32_t v : conf.compile_proj) f << v << " ";
+    f << "0\n";
+  }
+  for (const auto& cl : cls) {
+    for (int l : cl) f << l << " ";
+    f << "0\n";
+  }
+  if (!f) {
+    cerr << "ERROR: cannot write " << fname << endl;
+    exit(EXIT_FAILURE);
+  }
+}
+
+// Input vars outside the projection that ganak branches on: Arjun's extension
+// (or the input's 'c p optshow'), each claimed to be a function of the projection.
+vector<uint32_t> compile_proj_defined(const ArjunNS::SimplifiedCNF& cnf) {
+  const std::set<uint32_t> proj(conf.compile_proj.begin(), conf.compile_proj.end());
+  const std::set<uint32_t> sampl(cnf.get_sampl_vars().begin(), cnf.get_sampl_vars().end());
+  std::set<uint32_t> r;
+  for (const auto& v : cnf.get_opt_sampl_vars()) {
+    if (sampl.count(v)) continue;
+    for (int l : conf.compile_lit_map[v])
+      if (!proj.count((uint32_t)std::abs(l))) r.insert((uint32_t)std::abs(l));
+  }
+  return {r.begin(), r.end()};
+}
+
+// --compilecheckthorough: what --compilecheck cannot see. With F' the CNF the
+// circuit is compiled from and F the input, F' and the definitions must imply
+// every clause of F with a defined var (the others: bdnnf verify --cnf F checks
+// them against the circuit), and each projection-defined var must be defined
+// by the projection in F' (Padoa: two models of F' agreeing on it agree on the var).
+void run_compile_check_thorough(const vector<vector<CMSat::Lit>>& orig, const vector<vector<int>>& fp,
+                            const vector<uint32_t>& pdef) {
+  const double t = cpu_time();
+  auto fail = [](const string& msg) {
+    cerr << "*** d-DNNF THOROUGH CHECK FAILED: " << msg << endl;
+    std::abort();
+  };
+  const uint32_t onv = conf.compile_nvars;
+  const auto& nodes = conf.compile_def_nodes;
+  CMSat::SATSolver s;
+  s.set_verbosity(0);
+  // thousands of tiny incremental calls: inprocessing at each would dominate
+  s.set_no_simplify();
+  s.set_no_simplify_at_startup();
+  s.set_no_equivalent_lit_replacement();
+  const uint32_t tv = onv + (uint32_t)nodes.size();  // TRUE
+  s.new_vars(tv + 1);
+  s.add_clause({CMSat::Lit(tv, false)});
+  auto lit = [](int x) { return CMSat::Lit((uint32_t)std::abs(x) - 1, x < 0); };
+  auto aref = [&](uint64_t r) {
+    const uint64_t k = r >> 1;
+    // var k is solver var k-1, and so is AND node k-onv-1, after the input vars
+    const CMSat::Lit l = k == 0 ? CMSat::Lit(tv, false) : CMSat::Lit((uint32_t)(k - 1), false);
+    return (r & 1) ? ~l : l;
+  };
+  for (size_t j = 0; j < nodes.size(); j++) {
+    const CMSat::Lit n(onv + (uint32_t)j, false), a = aref(nodes[j].first), b = aref(nodes[j].second);
+    s.add_clause({~n, a});
+    s.add_clause({~n, b});
+    s.add_clause({n, ~a, ~b});
+  }
+  for (const auto& [v, r] : conf.compile_defs) {
+    const CMSat::Lit x((uint32_t)v - 1, false), y = aref(r);
+    s.add_clause({~x, y});
+    s.add_clause({x, ~y});
+  }
+  vector<CMSat::Lit> c;
+  for (const auto& cl : fp) {
+    c.clear();
+    for (int l : cl) c.push_back(lit(l));
+    s.add_clause(c);
+  }
+  if (s.solve() == CMSat::l_False) {
+    verb_print(1, "[compile] thorough check: the compiled CNF is UNSAT T: " << (cpu_time() - t));
+    return;
+  }
+  vector<char> defined(onv + 1, 0);
+  for (const auto& [v, r] : conf.compile_defs) defined[v] = 1;
+  // A solve() costs about the formula's size, so first refute the clause's
+  // negation by propagation alone, which settles most of them.
+  uint64_t checked = 0, solved = 0;
+  vector<CMSat::Lit> implied;
+  for (const auto& cl : orig) {
+    bool has_def = false;
+    for (const auto& l : cl) has_def |= l.var() < onv && defined[l.var() + 1];
+    if (!has_def) continue;
+    checked++;
+    c.clear();
+    for (const auto& l : cl) c.push_back(~l);
+    if (!s.implied_by(c, implied)) continue;
+    solved++;
+    s.set_no_confl_needed();
+    if (s.solve(&c) == CMSat::l_True) {
+      string m;
+      for (const auto& l : cl) m += std::to_string(l.sign() ? -(int)l.var() - 1 : (int)l.var() + 1) + " ";
+      fail("input clause " + m + "0 is not implied by the compiled CNF and the definitions");
+    }
+  }
+  const double t_cls = cpu_time() - t;
+  if (!pdef.empty()) {
+    const std::set<uint32_t> proj(conf.compile_proj.begin(), conf.compile_proj.end());
+    vector<uint32_t> copy(onv + 1, 0);
+    for (uint32_t v = 1; v <= onv; v++) {
+      if (proj.count(v)) { copy[v] = v - 1; continue; }
+      copy[v] = s.nVars();
+      s.new_var();
+    }
+    for (const auto& cl : fp) {
+      c.clear();
+      for (int l : cl) c.push_back(CMSat::Lit(copy[(uint32_t)std::abs(l)], l < 0));
+      s.add_clause(c);
+    }
+    for (uint32_t y : pdef)
+      for (bool neg : {false, true}) {
+        c = {CMSat::Lit(y - 1, neg), CMSat::Lit(copy[y], !neg)};
+        s.set_no_confl_needed();
+        if (s.solve(&c) == CMSat::l_True)
+          fail("var " + std::to_string(y) + " is branched on as a function of the projection, but it is not one");
+      }
+  }
+  verb_print(1, "[compile] thorough check: " << checked << " input clauses with a defined var ("
+      << solved << " not by propagation) T: " << t_cls
+      << ", " << pdef.size() << " projection-defined vars T: " << (cpu_time() - t - t_cls));
+}
+
 const char* mpfr_prec_name(const int prec) {
     if (prec <= 16) return "half float";
     if (prec <= 32) return "single float";
@@ -1010,6 +1170,8 @@ int main(int argc, char *argv[]) {
     } else verb_print(2, "[placement] not a labeled exact cover T: " << (cpu_time()-t));
   }
 
+  vector<vector<CMSat::Lit>> compile_orig_cls;
+  if (compile_check_thorough && !conf.compile_fname.empty()) compile_orig_cls = cnf.get_clauses();
   // Run Arjun
   if (compile_arjun) run_arjun_compile(cnf);
   else if (!do_arjun) {
@@ -1031,7 +1193,7 @@ int main(int argc, char *argv[]) {
   /* if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && conf.do_restart && do_breakid && cnf.clauses.size() > 1) */
   /*   generators = run_breakid(cnf); */
 
-  if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true);
+  if (!debug_arjun_cnf.empty() && conf.compile_fname.empty()) cnf.write_simpcnf(debug_arjun_cnf, true);
 
   // Run Ganak
   conf.disconnected_allowed = disconnected_allowed;
@@ -1050,6 +1212,17 @@ int main(int argc, char *argv[]) {
       {"approxmc", ApproxMC::AppMC::get_version_sha1()},
       {"treedecomp", TWD::get_version_sha1()},
     };
+    const auto pdef = compile_proj_defined(cnf);
+    if (conf.compile_projected) {
+      string pd;
+      for (uint32_t v : pdef) pd += (pd.empty() ? "" : " ") + std::to_string(v);
+      conf.compile_meta.emplace_back("projection-defined", pd);
+    }
+    if (!debug_arjun_cnf.empty() || compile_check_thorough) {
+      const auto fp = compile_cnf_clauses(cnf);
+      if (!debug_arjun_cnf.empty()) write_compile_cnf(debug_arjun_cnf, fp);
+      if (compile_check_thorough) run_compile_check_thorough(compile_orig_cls, fp, pdef);
+    }
   }
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);

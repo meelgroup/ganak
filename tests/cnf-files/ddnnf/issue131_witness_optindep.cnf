@@ -1,8 +1,8 @@
 c c d-DNNF compile, issue #131: the SAT witness must also give values to the
 c c optional sampling vars Arjun's extend adds (6176, 4511, ...), or they are
 c c free in the circuit and some of its models violate the CNF.
-c c RUN: %solver --mode 1 --compilecheck 1 --compile %t.bdnnf %s
-c c RUN: %bdnnf verify %t.bdnnf --cnf %s --expect-count 2
+c c RUN: %solver --mode 1 --compilecheck 1 --compilecheckthorough 1 --arjundebugcnf %t.fp.cnf --compile %t.bdnnf %s
+c c RUN: %bdnnf verify %t.bdnnf --cnf %t.fp.cnf --cnf %s --expect-count 2
 c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
 c t pwmc
 p cnf 12613 83

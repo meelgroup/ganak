@@ -1,4 +1,4 @@
-c c RUN: %solver --arjun 0 --td 0 --prob 0 --frontierstates 8192 %s | %OutputCheck %s
+c c RUN: %solver --arjun 0 --td 0 --prob 0 --frontierstates 8192 --groupedsweep 0 %s | %OutputCheck %s
 c c CHECK: ^c o \[sweep\] residual attempts 1 finished 1 \(words 0 buckets 1 sparse 0\)
 c c CHECK: ^c s exact arb int 14312$
 p cnf 28 65

@@ -91,7 +91,7 @@ recognized, random `--colornodes`/`--colordomnodes` budgets, checked against
 `--frontierstates N` counts residual components of at most 62 independent
 vars with bounded table methods, and `--groupedsweep 1` counts the whole
 input (and wide residuals) by a sweep over equal-scope clause groups or
-selector blocks. Both are off by default. `scripts/fuzz_sweep.py --num 1000`
+selector blocks. Both are on by default (`--frontierstates 8192 --groupedsweep 1`). `scripts/fuzz_sweep.py --num 1000`
 generates CNFs shaped for each method (small k-CNFs, binary-heavy residuals,
 banded clause groups, selector blocks, some projected), runs random budgets
 with and without Arjun, and checks against `--frontierstates 0 --groupedsweep 0`.

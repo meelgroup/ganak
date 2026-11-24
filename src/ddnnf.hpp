@@ -154,6 +154,8 @@ public:
   // comps, i.e. the assignment its count is based on; valid if has_split.
   std::vector<std::array<std::vector<int>, 2>> split_lits;
   std::vector<std::array<char, 2>> has_split;
+  // --compilecheck: free vars outside the projection, which get no node
+  std::vector<std::array<std::vector<int>, 2>> free_nonproj;
 
 
   // TODO this should be insert, for mem perf
@@ -164,6 +166,7 @@ public:
       override_node.resize(lev + 1, -1);
       split_lits.resize(lev + 1);
       has_split.resize(lev + 1, {0, 0});
+      free_nonproj.resize(lev + 1);
     }
   }
   void on_new_level(int lev) {
@@ -173,6 +176,8 @@ public:
     left_lits[lev].clear();
     override_node[lev] = -1;
     has_split[lev] = {0, 0};
+    free_nonproj[lev][0].clear();
+    free_nonproj[lev][1].clear();
   }
   void set_override(int lev, int node) {
     ensure_level(lev);
@@ -196,6 +201,18 @@ public:
   void enable_check(bool expect_smooth) { chk = std::make_unique<DDNNFChecker>(nvars, expect_smooth); }
   [[nodiscard]] DDNNFChecker* checker() const { return chk.get(); }
   [[nodiscard]] uint64_t num_edges() const { return w.num_edges(); }
+
+  // --compilecheck: node `child` with arc lits `lits` (internal numbering) must
+  // cover the comp's internal vars `comp_vs`, given the free vars `free_vs`
+  // that got no node.
+  void check_covers(int child, const std::vector<int>& lits, const std::vector<int>& free_vs,
+                    const std::vector<int>& comp_vs, const std::string& what) {
+    const std::vector<int> ml = mapped(lits);
+    chk->expect_covers((uint64_t)child, ml, mapped_vars(free_vs), mapped_vars(comp_vs), what);
+  }
+  void add_scope(int id, const std::vector<int>& free_vs) {
+    if (id > true_node) chk->add_scope((uint64_t)id, mapped_vars(free_vs));
+  }
 
   void finish() {
     int r = (root < 0) ? false_node : root;
@@ -250,6 +267,14 @@ private:
     for (int l : lits)
       for (int m : lit_map[std::abs(l) - 1]) scratch_lits.push_back(l > 0 ? m : -m);
     return scratch_lits;
+  }
+
+  std::vector<int> mapped_vars(const std::vector<int>& vs_) const {
+    if (lit_map.empty()) return vs_;
+    std::vector<int> r;
+    for (int v : vs_)
+      for (int m : lit_map[v - 1]) r.push_back(std::abs(m));
+    return r;
   }
 
   int emit_and(const std::vector<int>& k0, const std::vector<int>& units,

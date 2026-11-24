@@ -101,6 +101,26 @@ public:
     cnt[id] = std::move(c);
   }
 
+  // An arc (its lits and child), a SAT witness leaf or the root must mention
+  // every var of the comp it was built for, unless the var is free there.
+  void expect_covers(uint64_t node, const std::vector<int>& lits, const std::vector<int>& free_vs,
+                     const std::vector<int>& comp_vs, const std::string& what) {
+    const uint64_t* r = row(node);
+    av.assign(r, r + W);
+    for (int l : lits) set(av.data(), (uint32_t)std::abs(l));
+    for (int v : free_vs) set(av.data(), (uint32_t)v);
+    for (int v : comp_vs)
+      if (!bit(av.data(), (uint32_t)v))
+        fail(node, what + ": var " + std::to_string(v) + " of its comp is on no arc, not below it and not free");
+  }
+
+  // A free var outside the projection has no node: it is in the scope of the
+  // node of its level, so the parents see it as covered.
+  void add_scope(uint64_t id, const std::vector<int>& vs_) {
+    uint64_t* r = row(id);
+    for (int v : vs_) set(r, (uint32_t)v);
+  }
+
   // The node built for a decision level must count what ganak counted for it.
   void expect_count(uint64_t id, const std::string& ganak_count) const {
     if (id < cnt.size() && cnt[id].get_str() != ganak_count)
@@ -117,6 +137,7 @@ private:
 
   uint64_t* row(uint64_t id) { return vs.data() + id * W; }
   static bool bit(const uint64_t* s, uint32_t v) { return (s[v >> 6] >> (v & 63)) & 1; }
+  static void set(uint64_t* s, uint32_t v) { s[v >> 6] |= 1ULL << (v & 63); }
   static uint32_t low(uint64_t w, size_t q) { return (uint32_t)(q * 64 + __builtin_ctzll(w)); }
 
   uint64_t* new_node(uint64_t id) {

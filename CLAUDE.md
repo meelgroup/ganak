@@ -111,8 +111,8 @@ Uses `build/ganak-model`, `build/ganak`, `build/bdnnf`.
 count_fuzzer checks it with `--bdnnf PERC` (default 20% of tests; `--bdnnf 100`
 for all; `--compile` for all, skipping the other counters so it runs several
 times more compile tests per minute): it compiles with ganak, then checks the circuit
-with scalable C++ tools only — `bdnnf verify` (format + every claimed property,
-streamed), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
+with scalable C++ tools only — `bdnnf verify --cnf` (format + every claimed property,
+streamed, and every circuit model satisfies every clause, exactly), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
 checked against the clauses, `--assume` conditioning on random literals, and the
 count under fresh random weights), all against ganak; `bdnnf lits`/`core`/`batch`/`atomic`/`opt`
 against `bdnnf count --assume`/`opt --assume`, `bdnnf twise` (uncovered tuples
@@ -137,9 +137,10 @@ d4 (the d-DNNF compiler, for comparisons) is in `../d4-mccomp2026`: build with
 d4 `.nnf` that ddnnife reads with `-t <nvars>`.
 
 `ganak --compile out.bdnnf in.cnf` writes a faithful d-DNNF (`spec-bdnnf.md`).
-Building with `SLOW_DEBUG` checks every node at emission: decomposability, arc
-literals vs the child, smoothness of unprojected ORs, and each level's count
-against ganak's.
+Building with `SLOW_DEBUG` (or `--compilecheck 1`) checks every node at emission:
+decomposability, arc literals vs the child, smoothness of unprojected ORs, that
+every arc, SAT witness and the root covers every var of its comp, and each
+level's count against ganak's.
 
 ## Running Tests
 ```
@@ -161,7 +162,8 @@ cd build && lit tests/cnf-files/a.cnf
 properties) — never the byte-exact `.bdnnf` — so they
 do not break when search heuristics reshape the circuit:
 - `tests/cnf-files/ddnnf/*.cnf` — lit fixtures: `--compile`, then
-  `bdnnf verify --expect-count N` (format, count, claimed properties),
+  `bdnnf verify --cnf --expect-count N` (format, count, claimed properties,
+  every model satisfies the CNF),
   `bdnnf sample --cnf` (sampled models satisfy the CNF), and `bdnnf dot`.
   All the tools stream
   the file, with one var bitset per node at most.

@@ -76,7 +76,12 @@ public:
     circuit->ensure_level(lev);
     // SAT-oracle leaf: level solved by the SAT solver, which recorded a witness for
     // the synthesized vars. Use that leaf instead of an OR over (stale) children.
-    if (int ov = circuit->take_override(lev); ov >= 0) { compiled_node = ov; return; }
+    if (int ov = circuit->take_override(lev); ov >= 0) {
+      compiled_node = ov;
+      if (circuit->checker())
+        circuit->check_covers(ov, {}, {}, comp_vars(), "SAT witness of level " + std::to_string(lev));
+      return;
+    }
     // A zero count only means UNSAT when unweighted (or at a non-projected
     // level, where counts are existence): weights can make a SAT branch zero,
     // and its circuit must not depend on the weights.
@@ -98,7 +103,21 @@ public:
       for (int l : right_lits) std::cerr << " " << l;
       std::cerr << " } left_kid=" << left << " right_kid=" << right << "\n";
     });
+    if (circuit->checker()) {
+      const auto cv = comp_vars();
+      const std::vector<int>* lits_of[2] = {&left_lits, &right_lits};
+      const int kid_of[2] = {left, right};
+      for (int b = 0; b < 2; b++) {
+        if (kid_of[b] == circuit->false_node) continue;
+        circuit->check_covers(kid_of[b], *lits_of[b], circuit->free_nonproj[lev][b], cv,
+            std::string(b ? "right" : "left") + " arc of level " + std::to_string(lev));
+      }
+    }
     compiled_node = circuit->mk_or(std::move(arcs));
+    if (circuit->checker()) {
+      circuit->add_scope(compiled_node, circuit->free_nonproj[lev][0]);
+      circuit->add_scope(compiled_node, circuit->free_nonproj[lev][1]);
+    }
     // The node must count what ganak counted for this level.
     if (circuit->checker() && !counter.weighted() && top.is_indep) {
       std::stringstream ss;
@@ -133,6 +152,7 @@ public:
     const int lev = counter.dec_level();
     circuit->ensure_level(lev);
     circuit->children[lev][counter.decisions.top().is_right_branch()].clear();
+    circuit->free_nonproj[lev][counter.decisions.top().is_right_branch()].clear();
   }
 
   void do_free_var(uint32_t v) override {
@@ -145,8 +165,13 @@ public:
   // several input vars, which must then get one consistent value (a witness).
   void do_free_proj_var(uint32_t v) override {
     const int n = circuit->mk_witness_var((int)v);
-    if (n != circuit->true_node)
-      circuit->add_child(counter.dec_level(), counter.decisions.top().is_right_branch(), n);
+    const int lev = counter.dec_level();
+    const bool b = counter.decisions.top().is_right_branch();
+    if (n != circuit->true_node) circuit->add_child(lev, b, n);
+    else if (circuit->checker()) {
+      circuit->ensure_level(lev);
+      circuit->free_nonproj[lev][b].push_back((int)v);
+    }
   }
 
   void do_cache_hit(int node) override {
@@ -181,8 +206,10 @@ public:
     int inner = circuit->mk_and(circuit->children[0][b]);
     // Like every level, level 0's lits are those of its (last) split: a unit
     // learnt later is recorded by the level whose split saw it.
-    circuit->root = circuit->wrap_lits(inner,
-        circuit->has_split[0][b] ? circuit->split_lits[0][b] : level0_lits());
+    const auto lits = circuit->has_split[0][b] ? circuit->split_lits[0][b] : level0_lits();
+    if (circuit->checker() && inner != circuit->false_node)
+      circuit->check_covers(inner, lits, circuit->free_nonproj[0][b], comp_vars(), "root");
+    circuit->root = circuit->wrap_lits(inner, lits);
   }
 
   void do_finalize_and_write(bool unsat) override {
@@ -228,6 +255,12 @@ private:
   }
   std::vector<uint32_t> comp_mark;
   uint32_t mark = 0;
+  // the vars of the comp of the top decision level, DIMACS
+  std::vector<int> comp_vars() const {
+    std::vector<int> r;
+    all_vars_in_comp(counter.comp_manager->get_super_comp(counter.decisions.top()), vp) r.push_back((int)*vp);
+    return r;
+  }
   // Literals forced at decision level 0.
   std::vector<int> level0_lits() const {
     std::vector<int> r;

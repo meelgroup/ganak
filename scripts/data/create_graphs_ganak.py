@@ -2635,8 +2635,9 @@ only_dirs = [
     # "out-ganak-mccomp2324-2890750", # improved subsume
     # "out-ganak-mccomp2324-2893602-1",  # subsumption, chris-sweep
     # "out-ganak-mccomp2324-2893602-4",  # subsumption, chris-sweep
-    "out-ganak-mccomp2324-2898948-0",  # merging different branches, chris v2
+    # "out-ganak-mccomp2324-2898948-0",  # merging different branches, chris v2
     "out-ganak-mccomp2324-2906509", # more
+    "out-ganak-mccomp2324-2916601-", # more
 
 ]
 # only_dirs = [
@@ -2653,7 +2654,7 @@ not_versions = []
 # only_calls = ["vsadsadjust 128"]
 only_calls = []
 # not_calls = ["restart"]
-not_calls = []
+not_calls = ["symm"]
 todo = versions
 
 # fname filter examples (pass via --fname on the command line):

@@ -5640,7 +5640,7 @@ void Counter::print_cls_stats() const {
   vector<vector<uint32_t>> adj(nVars()+1);
   uint64_t horn = 0, ncls = 0, pairs = 0;
   double span = 0;
-  constexpr uint64_t max_pairs = 20000000;
+  constexpr uint64_t max_pairs = 2000000;
   auto add_cl = [&](const auto& lits) {
     ncls++;
     uint32_t p = 0, lo = UINT32_MAX, hi = 0;

@@ -1,0 +1,6 @@
+c c 3*2^38 models, far above p = 2^31-1: an int product overflowed here.
+c c RUN: %solver --mode 5 --prime 2147483647 %s | %OutputCheck %s
+p cnf 40 1
+1 2 0
+c c CHECK: ^s SATISFIABLE$
+c c CHECK: ^c s exact modprime 384 mod 2147483647$

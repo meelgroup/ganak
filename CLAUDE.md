@@ -370,6 +370,9 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 | `gates_extended` / `gates_extend_t` | Gates added by extension + time |
 | `padoa_extended` / `padoa_extend_t` | Vars added by Padoa extension + time |
 | `primal_density` / `primal_edge_var_ratio` | Primal graph density metrics |
+| `f_binfrac` / `f_avglong` / `f_clsvar` / `f_occcv` | `[formula]` line at count start: binary share of the clauses, avg long-clause length, clauses per var, var-occurrence coefficient of variation |
+| `f_modallen` / `f_horn` / `f_polarity` / `f_binonly` | share of long clauses with the most common length (1 = uniform k-SAT), Horn clauses, avg per-var polarity imbalance, vars in no long clause (2-CNF part) |
+| `f_span` / `f_random` / `f_cluster` / `f_wbits` | avg var-id span of a clause / #vars, occ CV x sqrt(mean occ) (~1 Poisson-random, 0 regular), sampled primal clustering coefficient, avg bits of the weights (FMpq) |
 
 ### Branching heuristic notes
 

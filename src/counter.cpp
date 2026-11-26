@@ -5589,6 +5589,129 @@ void Counter::print_cls_stats() const {
   verb_print(1, "Bin irred/red      " << setw(10) << num_bin_rred_cls/2 << " " << setw(10) << num_bin_red_cls/2);
   verb_print(1, "Long irred cls/tri " << setw(10) << long_irred_cls.size()-num_tri_irred_cls << " " << setw(10) << num_tri_irred_cls);
   verb_print(1, "Long red cls/tri   " << setw(10) << long_red_cls.size()-num_tri_red_cls << " " << setw(10) << num_tri_red_cls);
+
+  // Cheap structure metrics of the formula the counter starts from, for
+  // telling instance families apart
+  vector<uint32_t> vocc(nVars()+1, 0);
+  uint64_t long_lits = 0;
+  uint32_t max_len = 0;
+  for (const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    long_lits += cl.sz;
+    max_len = std::max(max_len, cl.sz);
+    for (const Lit l : cl) vocc[l.var()]++;
+  }
+  for (uint32_t v = 1; v <= nVars(); v++) for (const bool sign : {false, true}) {
+    const Lit l(v, sign);
+    for (const auto& w : watches[l].binaries) if (!w.red() && l < w.lit()) { vocc[v]++; vocc[w.lit().var()]++; }
+  }
+  double sum = 0, sq = 0;
+  uint32_t max_occ = 0, used = 0;
+  for (uint32_t v = 1; v <= nVars(); v++) {
+    if (vocc[v] == 0) continue;
+    used++;
+    sum += vocc[v];
+    sq += (double)vocc[v]*vocc[v];
+    max_occ = std::max(max_occ, vocc[v]);
+  }
+  const double mean = used ? sum/used : 0;
+  const double cv = (used && mean > 0) ? std::sqrt(std::max(0.0, sq/used - mean*mean))/mean : 0;
+  uint32_t nonunit_w = 0;
+  if (weighted()) for (uint32_t v = 1; v < opt_indep_support_end; v++)
+    if (!get_weight(Lit(v, false))->is_one() || !get_weight(Lit(v, true))->is_one()) nonunit_w++;
+  const uint64_t nbin = num_bin_rred_cls/2;
+  verb_print(1, "[formula] vars " << nVars() << " used " << used
+    << " indep " << ((indep_support_end > 0) ? indep_support_end-1 : 0)
+    << " optindep " << ((opt_indep_support_end > 0) ? opt_indep_support_end-1 : 0)
+    << " | bin " << nbin << " long " << long_irred_cls.size() << " tri " << num_tri_irred_cls
+    << " | avglong " << std::fixed << setprecision(2) << safe_div(long_lits, long_irred_cls.size())
+    << " maxlong " << max_len
+    << " | cls/var " << safe_div(nbin + long_irred_cls.size(), used)
+    << " long/var " << safe_div(long_irred_cls.size(), used)
+    << " binfrac " << safe_div(nbin, nbin + long_irred_cls.size())
+    << " | occ avg " << mean << " max " << max_occ << " cv " << cv
+    << " | weighted " << weighted() << " nonunitw " << nonunit_w);
+
+  // Shape: lengths, Horn, polarity, binary-only vars, id locality, sampled
+  // clustering of the primal graph, weight sizes
+  std::map<uint32_t, uint64_t> len_hist;
+  vector<uint32_t> npos(nVars()+1, 0), nneg(nVars()+1, 0);
+  vector<uint8_t> in_long(nVars()+1, 0);
+  vector<vector<uint32_t>> adj(nVars()+1);
+  uint64_t horn = 0, ncls = 0, pairs = 0;
+  double span = 0;
+  constexpr uint64_t max_pairs = 20000000;
+  auto add_cl = [&](const auto& lits) {
+    ncls++;
+    uint32_t p = 0, lo = UINT32_MAX, hi = 0;
+    for (const Lit l : lits) {
+      p += l.sign();
+      (l.sign() ? npos : nneg)[l.var()]++;
+      lo = std::min(lo, l.var());
+      hi = std::max(hi, l.var());
+    }
+    horn += p <= 1;
+    span += safe_div(hi - lo, used);
+    if (lits.size() <= 32 && pairs < max_pairs)
+      for (uint32_t i = 0; i < lits.size(); i++) for (uint32_t j = i+1; j < lits.size(); j++) {
+        adj[lits[i].var()].push_back(lits[j].var());
+        adj[lits[j].var()].push_back(lits[i].var());
+        pairs++;
+      }
+  };
+  for (const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    len_hist[cl.sz]++;
+    for (const Lit l : cl) in_long[l.var()] = 1;
+    add_cl(vector<Lit>(cl.begin(), cl.end()));
+  }
+  for (uint32_t v = 1; v <= nVars(); v++) for (const bool sign : {false, true}) {
+    const Lit l(v, sign);
+    for (const auto& w : watches[l].binaries) if (!w.red() && l < w.lit()) add_cl(std::array<Lit, 2>{l, w.lit()});
+  }
+  uint64_t modal = 0;
+  for (const auto& [len, cnt] : len_hist) modal = std::max(modal, cnt);
+  double pol = 0;
+  uint32_t bin_only = 0;
+  for (uint32_t v = 1; v <= nVars(); v++) {
+    if (vocc[v] == 0) continue;
+    pol += safe_div(std::abs((int)npos[v] - (int)nneg[v]), npos[v] + nneg[v]);
+    bin_only += !in_long[v];
+  }
+  uint64_t tri_tried = 0, tri_found = 0;
+  if (pairs < max_pairs) {
+    for (auto& a2 : adj) { std::sort(a2.begin(), a2.end()); a2.erase(std::unique(a2.begin(), a2.end()), a2.end()); }
+    const uint32_t step = std::max<uint32_t>(1, nVars()/2000);
+    for (uint32_t v = 1; v <= nVars(); v += step) {
+      const auto& nb = adj[v];
+      const uint32_t k = std::min<uint32_t>(nb.size(), 8);
+      for (uint32_t i = 0; i < k; i++) for (uint32_t j = i+1; j < k; j++) {
+        tri_tried++;
+        tri_found += std::binary_search(adj[nb[i]].begin(), adj[nb[i]].end(), nb[j]);
+      }
+    }
+  }
+  double wbits = 0;
+  uint32_t wn = 0, wnorm = 0;
+  if (weighted()) for (uint32_t v = 1; v < opt_indep_support_end; v++) {
+    const auto* a0 = dynamic_cast<const ArjunNS::FMpq*>(get_weight(Lit(v, false)).get());
+    const auto* a1 = dynamic_cast<const ArjunNS::FMpq*>(get_weight(Lit(v, true)).get());
+    if (!a0 || !a1) break;
+    for (const auto* x : {a0, a1}) {
+      wbits += (double)mpz_sizeinbase(x->val.get_num_mpz_t(), 2) + (double)mpz_sizeinbase(x->val.get_den_mpz_t(), 2);
+      wn++;
+    }
+    wnorm += (a0->val + a1->val == 1);
+  }
+  verb_print(1, "[formula] shape modal-len-frac " << std::fixed << setprecision(2) << safe_div(modal, long_irred_cls.size())
+    << " horn " << safe_div(horn, ncls)
+    << " polarity " << safe_div(pol, used)
+    << " bin-only-vars " << safe_div(bin_only, used)
+    << " span " << safe_div(span, ncls)
+    << " randomness " << cv*std::sqrt(mean)
+    << " clustering " << (tri_tried ? std::to_string(safe_div(tri_found, tri_tried)).substr(0, 4) : std::string("-"))
+    << " | weight bits " << (wn ? safe_div(wbits, wn) : 0.0)
+    << " normalized " << (weighted() ? safe_div(wnorm, wn/2) : 0.0));
 }
 
 

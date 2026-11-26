@@ -165,7 +165,11 @@ _COMP_SUM_KEYS = ["newnvars", "indepsz", "optindepsz", "irred_bin", "irred_long"
                   "conflicts", "decisionsK", "compsK",
                   "bce_blockedK", "bce_pops", "bce_reproc", "bce_triples", "bce_skipped_lits",
                   "count_time"]
-_COMP_LARGEST_KEYS = ["primal_density", "primal_edge_var_ratio", "td_nodes", "td_split",
+FORMULA_KEYS = {
+    False: [("f_binfrac", "binfrac"), ("f_avglong", "avglong"), ("f_clsvar", "cls/var"), ("f_occcv", "cv")],
+    True: [("f_modallen", "modal-len-frac"), ("f_horn", "horn"), ("f_polarity", "polarity"), ("f_binonly", "bin-only-vars"), ("f_span", "span"), ("f_random", "randomness"), ("f_cluster", "clustering"), ("f_wbits", "bits")],
+}
+_COMP_LARGEST_KEYS = ["f_binfrac", "f_avglong", "f_clsvar", "f_occcv", "f_modallen", "f_horn", "f_polarity", "f_binonly", "f_span", "f_random", "f_cluster", "f_wbits", "primal_density", "primal_edge_var_ratio", "td_nodes", "td_split",
                       "td_bags", "td_src", "td_band", "td_cands", "td_accepts", "td_levels",
                       "td_centroid_bag", "td_soft_width", "td_ind_n", "td_ind_levels",
                       "td_ind_top_pct", "td_weight"]
@@ -376,6 +380,12 @@ def parse_ganak_output(fname):
                 comp()["br_share_freq"] = float(f[9])
             elif line.startswith("c o [td] decompose time:"):
                 comp()["td_time"] = float(line.split()[5])
+            elif line.startswith("c o [formula] vars ") or line.startswith("c o [formula] shape "):
+                w = line.split()
+                for col, key in FORMULA_KEYS.get(w[3] == "shape", ()):
+                    if key in w and w.index(key)+1 < len(w):
+                        try: comp()[col] = float(w[w.index(key)+1])
+                        except ValueError: pass
             elif line.startswith("c o [td] Primal graph"):
                 comp()["primal_density"] = float(line.split()[10])
                 comp()["primal_edge_var_ratio"] = float(line.split()[12])
@@ -936,7 +946,19 @@ def main():
           bce_reproc INT,
           bce_triples INT,
           bce_skipped_lits INT,
-          count_time FLOAT
+          count_time FLOAT,
+          f_binfrac FLOAT,
+          f_avglong FLOAT,
+          f_clsvar FLOAT,
+          f_occcv FLOAT,
+          f_modallen FLOAT,
+          f_horn FLOAT,
+          f_polarity FLOAT,
+          f_binonly FLOAT,
+          f_span FLOAT,
+          f_random FLOAT,
+          f_cluster FLOAT,
+          f_wbits FLOAT
         );
         CREATE TABLE IF NOT EXISTS preproc (
           dirname STRING NOT NULL,
@@ -1079,6 +1101,18 @@ def main():
             n(f.get("bce_triples", "")),
             n(f.get("bce_skipped_lits", "")),
             n(f.get("count_time", "")),
+            n(f.get("f_binfrac", "")),
+            n(f.get("f_avglong", "")),
+            n(f.get("f_clsvar", "")),
+            n(f.get("f_occcv", "")),
+            n(f.get("f_modallen", "")),
+            n(f.get("f_horn", "")),
+            n(f.get("f_polarity", "")),
+            n(f.get("f_binonly", "")),
+            n(f.get("f_span", "")),
+            n(f.get("f_random", "")),
+            n(f.get("f_cluster", "")),
+            n(f.get("f_wbits", "")),
         ))
 
     # an older data.sqlite3 predates the td_* columns, add them rather than
@@ -1108,7 +1142,19 @@ def main():
                      ("autarky_vars", "INT"), ("autarky_time", "FLOAT"),
                      ("bce_blockedK", "INT"), ("bce_pops", "INT"), ("bce_reproc", "INT"),
                      ("bce_triples", "INT"), ("bce_skipped_lits", "INT"),
-                     ("count_time", "FLOAT")):
+                     ("count_time", "FLOAT"),
+                     ("f_binfrac", "FLOAT"),
+                     ("f_avglong", "FLOAT"),
+                     ("f_clsvar", "FLOAT"),
+                     ("f_occcv", "FLOAT"),
+                     ("f_modallen", "FLOAT"),
+                     ("f_horn", "FLOAT"),
+                     ("f_polarity", "FLOAT"),
+                     ("f_binonly", "FLOAT"),
+                     ("f_span", "FLOAT"),
+                     ("f_random", "FLOAT"),
+                     ("f_cluster", "FLOAT"),
+                     ("f_wbits", "FLOAT")):
         if col not in have:
             conn.execute(f"ALTER TABLE data ADD COLUMN {col} {typ}")
 
@@ -1133,7 +1179,7 @@ def main():
                "irred_cls", "mc_log10", "cong_calls", "cong_and", "cong_xor",
                "cong_merged", "cong_units", "cong_time", "autarky_vars", "autarky_time",
                "bce_blockedK", "bce_pops", "bce_reproc", "bce_triples", "bce_skipped_lits",
-               "count_time"]
+               "count_time", "f_binfrac", "f_avglong", "f_clsvar", "f_occcv", "f_modallen", "f_horn", "f_polarity", "f_binonly", "f_span", "f_random", "f_cluster", "f_wbits"]
     assert sorted(ordered) == sorted(data_cols), (set(ordered) ^ set(data_cols))
     conn.executemany(
         "INSERT INTO data (" + ",".join(ordered) + ") VALUES ("

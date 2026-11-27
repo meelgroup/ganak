@@ -55,6 +55,22 @@ set(SOURCES
 
 add_library(ganak ${SOURCES})
 
+# not linked into ganak: only buddy-fuzz uses the BuDDy fork
+set(BUDDY_SOURCES
+    buddy-2.4/src/bddio.c
+    buddy-2.4/src/bddop.c
+    buddy-2.4/src/bvec.c
+    buddy-2.4/src/cache.c
+    buddy-2.4/src/fdd.c
+    buddy-2.4/src/imatrix.c
+    buddy-2.4/src/kernel.c
+    buddy-2.4/src/pairs.c
+    buddy-2.4/src/prime.c
+    buddy-2.4/src/reorder.c
+    buddy-2.4/src/tree.c
+    buddy-2.4/src/cppext.cxx
+)
+
 # MurmurHash3.cpp intentionally falls through in its switch; silence the warning.
 if (NOT MSVC)
   set_source_files_properties(MurmurHash3.cpp PROPERTIES COMPILE_OPTIONS "-Wno-implicit-fallthrough")
@@ -103,6 +119,11 @@ target_link_libraries(bdnnf-bin PRIVATE PkgConfig::GMP)
 add_executable(ganak-model-bin gmodel_main.cpp gmodel_parse.cpp gmodel_encode.cpp)
 add_executable(bdnnf-compact-fuzz bdnnf_compact_fuzz.cpp)
 set_target_properties(bdnnf-compact-fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+add_executable(buddy-fuzz buddy_fuzz.cpp ${BUDDY_SOURCES})
+target_compile_definitions(buddy-fuzz PRIVATE CACHESTATS)
+target_include_directories(buddy-fuzz PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/ ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/src/)
+set_target_properties(buddy-fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 if(ZSTD_FOUND)
   # Plain library paths, not an imported target: keeps the exported static
   # ganak target usable without a matching find_dependency.

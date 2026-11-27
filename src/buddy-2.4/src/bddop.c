@@ -44,6 +44,17 @@
 #include "kernel.h"
 #include "cache.h"
 
+/* past the op miss limit, give up like at the node cap; once in error, stop
+   recursing: the caller throws the result away (bdd_clear_error) */
+#ifdef CACHESTATS
+#define OPMISS_CHECK() do { \
+   if (bddopmisslimit && bddcachestats.opMiss > bddopmisslimit && !bdderrorcond) { \
+      bdd_error(BDD_NODENUM); bdderrorcond = abs(BDD_NODENUM); } \
+   if (bdderrorcond) return 0; } while (0)
+#else
+#define OPMISS_CHECK() do { if (bdderrorcond) return 0; } while (0)
+#endif
+
    /* Hash value modifiers to distinguish between entries in misccache */
 #define CACHEID_CONSTRAIN   0x0
 #define CACHEID_RESTRICT    0x1
@@ -123,6 +134,7 @@ extern bddCacheStat bddcachestats;
    /* Internal prototypes */
 static BDD    not_rec(BDD);
 static BDD    apply_rec(BDD, BDD);
+static BDD    and_rec(BDD, BDD);
 static BDD    ite_rec(BDD, BDD, BDD);
 static int    simplify_rec(BDD, BDD);
 static int    quant_rec(int);
@@ -139,6 +151,7 @@ static BDD    satoneset_rec(BDD, BDD);
 static int    fullsatone_rec(int);
 static void   allsat_rec(BDD r);
 static uint64_t satcount_rec_i64(int, uint32_t);
+static void satmemo_done(void);
 static void   varprofile_rec(int);
 static int    varset2vartable(BDD);
 static int    varset2svartable(BDD);
@@ -212,6 +225,7 @@ void bdd_operator_done(void)
    BddCache_done(&appexcache);
    BddCache_done(&replacecache);
    BddCache_done(&misccache);
+   satmemo_done();
 
    if (supportSet != NULL)
      free(supportSet);
@@ -522,7 +536,7 @@ BDD bdd_apply(BDD l, BDD r, int op)
 
       if (!firstReorder)
 	 bdd_disable_reorder();
-      res = apply_rec(l, r);
+      res = (op == bddop_and) ? and_rec(l, r) : apply_rec(l, r);
       if (!firstReorder)
 	 bdd_enable_reorder();
    }
@@ -539,6 +553,92 @@ BDD bdd_apply(BDD l, BDD r, int op)
    return res;
 }
 
+
+/* The clause (OR) of k literals, built as a chain of nodes from the deepest
+   one up, without apply and its cache. levels[] must be strictly increasing;
+   pos[i] says if literal i is positive. */
+BDD bdd_clause(const int *levels, const int *pos, int k)
+{
+   BDD r;
+   int i;
+
+   if (k == 0)
+      return BDDZERO;
+   INITREF;
+   r = pos[k-1] ? bdd_makenode(levels[k-1], BDDZERO, BDDONE)
+                : bdd_makenode(levels[k-1], BDDONE, BDDZERO);
+   PUSHREF(r);
+   for (i = k-2 ; i >= 0 ; i--)
+   {
+      r = pos[i] ? bdd_makenode(levels[i], r, BDDONE)
+                 : bdd_makenode(levels[i], BDDONE, r);
+      PUSHREF(r);
+   }
+   checkresize();
+   return r;
+}
+
+/* apply_rec for AND only: no switch on the global applyop at every step,
+   and the operands ordered, so AND(a,b) and AND(b,a) share a cache entry */
+static BDD and_rec(BDD l, BDD r)
+{
+   BddCacheData *entry;
+   BDD res;
+
+   if (l == r)
+      return l;
+   if (ISZERO(l)  ||  ISZERO(r))
+      return 0;
+   if (ISONE(l))
+      return r;
+   if (ISONE(r))
+      return l;
+   if (l > r)
+   {
+      const BDD t = l;
+      l = r;
+      r = t;
+   }
+
+   entry = BddCache_lookup(&applycache, APPLYHASH(l,r,bddop_and));
+   if (entry->a == l  &&  entry->b == r  &&  entry->c == bddop_and)
+   {
+#ifdef CACHESTATS
+      bddcachestats.opHit++;
+#endif
+      return entry->r.res;
+   }
+#ifdef CACHESTATS
+   bddcachestats.opMiss++;
+#endif
+   OPMISS_CHECK();
+
+   if (LEVEL(l) == LEVEL(r))
+   {
+      PUSHREF( and_rec(LOW(l), LOW(r)) );
+      PUSHREF( and_rec(HIGH(l), HIGH(r)) );
+      res = bdd_makenode(LEVEL(l), READREF(2), READREF(1));
+   }
+   else if (LEVEL(l) < LEVEL(r))
+   {
+      PUSHREF( and_rec(LOW(l), r) );
+      PUSHREF( and_rec(HIGH(l), r) );
+      res = bdd_makenode(LEVEL(l), READREF(2), READREF(1));
+   }
+   else
+   {
+      PUSHREF( and_rec(l, LOW(r)) );
+      PUSHREF( and_rec(l, HIGH(r)) );
+      res = bdd_makenode(LEVEL(r), READREF(2), READREF(1));
+   }
+   POPREF(2);
+
+   entry->a = l;
+   entry->b = r;
+   entry->c = bddop_and;
+   entry->r.res = res;
+   return res;
+}
 
 static BDD apply_rec(BDD l, BDD r)
 {
@@ -609,6 +709,7 @@ static BDD apply_rec(BDD l, BDD r)
 #ifdef CACHESTATS
       bddcachestats.opMiss++;
 #endif
+   OPMISS_CHECK();
 
       if (LEVEL(l) == LEVEL(r))
       {
@@ -1711,6 +1812,7 @@ static int quant_rec(int r)
 #ifdef CACHESTATS
    bddcachestats.opMiss++;
 #endif
+   OPMISS_CHECK();
 
    PUSHREF( quant_rec(LOW(r)) );
    PUSHREF( quant_rec(HIGH(r)) );
@@ -2000,6 +2102,7 @@ static int appquant_rec(int l, int r)
 #ifdef CACHESTATS
       bddcachestats.opMiss++;
 #endif
+   OPMISS_CHECK();
 
       if (LEVEL(l) == LEVEL(r))
       {
@@ -2454,37 +2557,123 @@ static unsigned min(unsigned int a, unsigned int b)
    return a < b ? a : b;
 }
 
+/* A memo of its own, per call: in misccache, hash collisions on a small
+   cache made the recursion exponential */
+static uint64_t *satmemo = NULL;
+static unsigned *satmemo_stamp = NULL;
+static int satmemo_size = 0;
+static unsigned satmemo_cur = 0;
+
+static void satmemo_done(void)
+{
+   free(satmemo);
+   free(satmemo_stamp);
+   satmemo = NULL;
+   satmemo_stamp = NULL;
+   satmemo_size = 0;
+   satmemo_cur = 0;
+}
+
 uint64_t bdd_satcount_i64(BDD r, uint32_t proj_end)
 {
    uint64_t size=1;
 
    CHECKa(r, 0);
 
-   miscid = CACHEID_SATCOI64;
+   if (satmemo_size < bddnodesize)
+   {
+      satmemo_done();
+      satmemo = NEW(uint64_t, bddnodesize);
+      satmemo_stamp = (unsigned*)calloc(bddnodesize, sizeof(unsigned));
+      if (satmemo == NULL || satmemo_stamp == NULL)
+	 return bdd_error(BDD_MEMORY);
+      satmemo_size = bddnodesize;
+   }
+   if (++satmemo_cur == 0)
+   {
+      memset(satmemo_stamp, 0, sizeof(unsigned)*satmemo_size);
+      satmemo_cur = 1;
+   }
+
    size = ((uint64_t)1) << min(LEVEL(r), proj_end);
 
    return size * satcount_rec_i64(r, proj_end);
 }
 
+/* The count over the vars whose levels have a rank: rank[level] is the
+   var's position among them, rank[bddvarnum] (the terminals' level) is their
+   number. Vars of rank >= proj are projected away. The BDD's support must
+   be among the ranked levels. */
+static const int *satrank = NULL;
+static int satproj = 0;
+
+static uint64_t satcount_rank_rec(int root)
+{
+   BddNode *node;
+   uint64_t size;
+   int r;
+
+   if (root < 2)
+      return root;
+   if (satmemo_stamp[root] == satmemo_cur)
+      return satmemo[root];
+
+   node = &bddnodes[root];
+   r = satrank[LEVELp(node)];
+   if (r >= satproj)
+      return 1;
+
+   size = (((uint64_t)1) << (min(satrank[LEVEL(LOWp(node))], satproj) - r - 1))
+	 * satcount_rank_rec(LOWp(node));
+   size += (((uint64_t)1) << (min(satrank[LEVEL(HIGHp(node))], satproj) - r - 1))
+	 * satcount_rank_rec(HIGHp(node));
+
+   satmemo[root] = size;
+   satmemo_stamp[root] = satmemo_cur;
+   return size;
+}
+
+uint64_t bdd_satcount_i64_rank(BDD r, const int *rank, int proj)
+{
+   CHECKa(r, 0);
+
+   if (satmemo_size < bddnodesize)
+   {
+      satmemo_done();
+      satmemo = NEW(uint64_t, bddnodesize);
+      satmemo_stamp = (unsigned*)calloc(bddnodesize, sizeof(unsigned));
+      if (satmemo == NULL || satmemo_stamp == NULL)
+	 return bdd_error(BDD_MEMORY);
+      satmemo_size = bddnodesize;
+   }
+   if (++satmemo_cur == 0)
+   {
+      memset(satmemo_stamp, 0, sizeof(unsigned)*satmemo_size);
+      satmemo_cur = 1;
+   }
+   satrank = rank;
+   satproj = proj;
+   return (((uint64_t)1) << min(rank[LEVEL(r)], proj)) * satcount_rank_rec(r);
+}
+
 static uint64_t satcount_rec_i64(int root, uint32_t proj_end)
 {
-   BddCacheData *entry;
    BddNode *node;
    uint64_t size, s;
 
    if (root < 2)
       return root;
 
-   entry = BddCache_lookup(&misccache, SATCOUHASH(root));
-   if (entry->a == root  &&  entry->c == miscid && entry->proj_end == proj_end) {
-      return entry->r.res;
-   }
+   if (satmemo_stamp[root] == satmemo_cur)
+      return satmemo[root];
 
    node = &bddnodes[root];
    size = 0;
 
+   /* Below proj_end only satisfiability matters, and every node of a reduced
+      BDD except bddfalse is satisfiable */
    if (LEVELp(node) >= proj_end)
-      return (satcount_rec_i64(LOWp(node), proj_end) + satcount_rec_i64(HIGHp(node), proj_end)) > 0;
+      return 1;
 
    s = ((uint64_t)1) << (min(LEVEL(LOWp(node)), proj_end) - LEVELp(node) - 1);
    size += s * satcount_rec_i64(LOWp(node), proj_end);
@@ -2492,10 +2681,8 @@ static uint64_t satcount_rec_i64(int root, uint32_t proj_end)
    s = ((uint64_t)1) << (min(LEVEL(HIGHp(node)), proj_end) - LEVELp(node) - 1);
    size += s * satcount_rec_i64(HIGHp(node), proj_end);
 
-   entry->a = root;
-   entry->c = miscid;
-   entry->r.res = size;
-   entry->proj_end = proj_end;
+   satmemo[root] = size;
+   satmemo_stamp[root] = satmemo_cur;
 
    return size;
 }

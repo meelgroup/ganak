@@ -95,6 +95,7 @@ extern "C" {
 
 extern int       bddrunning;         /* Flag - package initialized */
 extern int       bdderrorcond;       /* Some error condition was met */
+extern unsigned long bddopmisslimit; /* give up past this many op cache misses, 0 = never */
 extern int       bddnodesize;        /* Number of allocated nodes */
 extern int       bddmaxnodesize;     /* Maximum allowed number of nodes */
 extern int       bddmaxnodeincrease; /* Max. # of nodes used to inc. table */

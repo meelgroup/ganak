@@ -596,6 +596,7 @@ if(ENABLE_TESTING)
   message(STATUS "Python 3 -- Python3_NumPy_VERSION=${Python3_NumPy_VERSION}")
   enable_testing()
   add_subdirectory(tests/cnf-files)
+  add_test(NAME buddy-fuzz COMMAND buddy-fuzz --num 2000 --seed 1)
 
 endif()
 

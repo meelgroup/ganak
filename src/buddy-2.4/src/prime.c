@@ -223,6 +223,9 @@ static int isPrime(unsigned int src)
 
 unsigned int bdd_prime_gte(unsigned int src)
 {
+  /* Random(src-1) below divides by zero for src 1 */
+  if (src <= 3)
+    return src <= 2 ? 2 : 3;
   if (isEven(src))
     ++src;
 
@@ -235,6 +238,8 @@ unsigned int bdd_prime_gte(unsigned int src)
 
 unsigned int bdd_prime_lte(unsigned int src)
 {
+  if (src <= 3)
+    return src <= 2 ? 2 : 3;
   if (isEven(src))
      --src;
 

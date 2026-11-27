@@ -87,6 +87,7 @@ static int minfreenodes=20;
 
 int          bddrunning;            /* Flag - package initialized */
 int          bdderrorcond;          /* Some error condition */
+unsigned long bddopmisslimit = 0;
 int          bddnodesize;           /* Number of allocated nodes */
 int          bddmaxnodesize;        /* Maximum allowed number of nodes */
 int          bddmaxnodeincrease;    /* Max. # of nodes used to inc. table */
@@ -139,7 +140,7 @@ static char *errorstrings[BDD_ERRNUM] =
 
 /*=== OTHER INTERNAL DEFINITIONS =======================================*/
 
-#define NODEHASH(lvl,l,h) (TRIPLE(lvl,l,h) % bddnodesize)
+#define NODEHASH(lvl,l,h) (bdd_fastrange(TRIPLE(lvl,l,h), (unsigned int)bddnodesize))
 
 
 /*************************************************************************
@@ -566,6 +567,8 @@ DESCR {* This function sets the maximal number of bdd nodes the package may
 RETURN {* The old threshold on succes, otherwise a negative error code. *}
 ALSO   {* bdd\_setmaxincrease, bdd\_setminfreenodes *}
 */
+void bdd_setopmisslimit(unsigned long limit) { bddopmisslimit = limit; }
+
 int bdd_setmaxnodenum(int size)
 {
    if (size > bddnodesize  ||  size == 0)
@@ -1261,7 +1264,7 @@ int bdd_makenode(unsigned int level, int low, int high)
    register unsigned int hash;
    register int res;
 
-#ifdef CACHESTATS
+#ifdef CACHESTATS_FULL
    bddcachestats.uniqueAccess++;
 #endif
 
@@ -1277,20 +1280,20 @@ int bdd_makenode(unsigned int level, int low, int high)
    {
       if (LEVEL(res) == level  &&  LOW(res) == low  &&  HIGH(res) == high)
       {
-#ifdef CACHESTATS
+#ifdef CACHESTATS_FULL
 	 bddcachestats.uniqueHit++;
 #endif
 	 return res;
       }
 
       res = bddnodes[res].next;
-#ifdef CACHESTATS
+#ifdef CACHESTATS_FULL
       bddcachestats.uniqueChain++;
 #endif
    }
 
       /* No existing node -> build one */
-#ifdef CACHESTATS
+#ifdef CACHESTATS_FULL
    bddcachestats.uniqueMiss++;
 #endif
 
@@ -1311,6 +1314,14 @@ int bdd_makenode(unsigned int level, int low, int high)
 
       if ((bddfreenum*100) / bddnodesize <= minfreenodes)
       {
+	 /* At the user's max the table cannot grow: rather than collect
+	    garbage every few nodes until it is completely full, give up now */
+	 if (bddmaxnodesize > 0  &&  bddnodesize >= bddmaxnodesize)
+	 {
+	    bdd_error(BDD_NODENUM);
+	    bdderrorcond = abs(BDD_NODENUM);
+	    return 0;
+	 }
 	 bdd_noderesize(1);
 	 hash = NODEHASH(level, low, high);
       }

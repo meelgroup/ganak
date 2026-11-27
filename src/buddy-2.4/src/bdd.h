@@ -234,6 +234,7 @@ extern int      bdd_setvarnum(int);
 extern int      bdd_extvarnum(int);
 extern int      bdd_isrunning(void);
 extern int      bdd_setmaxnodenum(int);
+extern void     bdd_setopmisslimit(unsigned long);
 extern int      bdd_setmaxincrease(int);
 extern int      bdd_setminfreenodes(int);
 extern int      bdd_getnodenum(void);
@@ -303,6 +304,8 @@ extern BDD      bdd_satoneset(BDD, BDD, BDD);
 extern BDD      bdd_fullsatone(BDD);
 extern void     bdd_allsat(BDD r, bddallsathandler handler);
 extern uint64_t bdd_satcount_i64(BDD, uint32_t);
+extern uint64_t bdd_satcount_i64_rank(BDD, const int*, int);
+extern BDD      bdd_clause(const int*, const int*, int);
 extern int      bdd_nodecount(BDD);
 extern int      bdd_anodecount(BDD *, int);
 extern int*     bdd_varprofile(BDD);
@@ -497,6 +500,8 @@ private:
    friend bdd      bdd_fullsatone(const bdd &);
    friend void     bdd_allsat(const bdd &r, bddallsathandler handler);
    friend uint64_t bdd_satcount_i64(const bdd &, uint32_t);
+   friend uint64_t bdd_satcount_i64_rank(const bdd &, const int*, int);
+   friend bdd      bdd_fromroot(BDD);
    friend int      bdd_nodecount(const bdd &);
    friend int      bdd_anodecountpp(const bdd *, int);
    friend int*     bdd_varprofile(const bdd &);
@@ -664,6 +669,11 @@ inline void bdd_allsat(const bdd &r, bddallsathandler handler)
 
 inline uint64_t bdd_satcount_i64(const bdd &r, uint32_t proj_end)
 { return bdd_satcount_i64(r.root, proj_end); }
+inline uint64_t bdd_satcount_i64_rank(const bdd &r, const int *rank, int proj)
+{ return bdd_satcount_i64_rank(r.root, rank, proj); }
+  /* a C API root as a bdd: takes its own reference */
+inline bdd bdd_fromroot(BDD r)
+{ return bdd(r); }
 
 inline int bdd_nodecount(const bdd &r)
 { return bdd_nodecount(r.root); }

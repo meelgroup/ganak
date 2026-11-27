@@ -62,7 +62,13 @@ extern void BddCache_done(BddCache *);
 extern int  BddCache_resize(BddCache *, int);
 extern void BddCache_reset(BddCache *);
 
-#define BddCache_lookup(cache, hash) (&(cache)->table[hash % (cache)->tablesize])
+/* Fibonacci mixing, then the multiply-shift range reduction: no division
+   on every lookup, and any table size works */
+static inline unsigned int bdd_fastrange(unsigned int h, unsigned int n)
+{
+   return (unsigned int)(((uint64_t)(h * 2654435761u) * (uint64_t)n) >> 32);
+}
+#define BddCache_lookup(cache, hash) (&(cache)->table[bdd_fastrange((unsigned int)(hash), (unsigned int)(cache)->tablesize)])
 
 
 #endif /* _CACHE_H */

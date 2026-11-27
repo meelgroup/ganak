@@ -164,7 +164,10 @@ def td_update(c, width, t):
 _COMP_SUM_KEYS = ["newnvars", "indepsz", "optindepsz", "irred_bin", "irred_long", "irred_tri",
                   "conflicts", "decisionsK", "compsK",
                   "bce_blockedK", "bce_pops", "bce_reproc", "bce_triples", "bce_skipped_lits",
-                  "count_time"]
+                  "count_time", "comps_recordK", "work_propK", "work_proplK", "work_anaK", "work_compK",
+                  "work_setupK", "work_btK", "work_branchK"]
+WORK_COLS = ["work_propK", "work_proplK", "work_anaK", "work_compK", "work_setupK", "work_btK", "work_branchK"]
+STAT_COLS = [("comps_recordK", "FLOAT")] + [(c, "FLOAT") for c in WORK_COLS]
 FORMULA_KEYS = {
     False: [("f_binfrac", "binfrac"), ("f_avglong", "avglong"), ("f_clsvar", "cls/var"), ("f_occcv", "cv")],
     True: [("f_modallen", "modal-len-frac"), ("f_horn", "horn"), ("f_polarity", "polarity"), ("f_binonly", "bin-only-vars"), ("f_span", "span"), ("f_random", "randomness"), ("f_cluster", "clustering"), ("f_wbits", "bits")],
@@ -401,6 +404,12 @@ def parse_ganak_output(fname):
                 comp()["bce_skipped_lits"] = int(w[w.index("lits:") + 1])
             elif line.startswith("c o count time:"):
                 comp()["count_time"] = float(line.split()[4])
+            elif line.startswith("c o comps recordK/non-reset ratio"):
+                comp()["comps_recordK"] = float(line.split()[5])
+            elif line.startswith("c o work K prop/cl/ana/cmp/sup/bt/br"):
+                vals = line.split("br", 1)[1].split("/")
+                for col, v in zip(WORK_COLS, vals):
+                    comp()[col] = float(v)
             elif line.startswith("c o cache miss rate"):
                 comp()["cache_miss_rate"] = float(line.split()[5])
             elif line.startswith("c o cache K (lookup/ stores/ hits/ dels)"):
@@ -958,7 +967,15 @@ def main():
           f_span FLOAT,
           f_random FLOAT,
           f_cluster FLOAT,
-          f_wbits FLOAT
+          f_wbits FLOAT,
+          comps_recordK FLOAT,
+          work_propK FLOAT,
+          work_proplK FLOAT,
+          work_anaK FLOAT,
+          work_compK FLOAT,
+          work_setupK FLOAT,
+          work_btK FLOAT,
+          work_branchK FLOAT
         );
         CREATE TABLE IF NOT EXISTS preproc (
           dirname STRING NOT NULL,
@@ -1113,6 +1130,7 @@ def main():
             n(f.get("f_random", "")),
             n(f.get("f_cluster", "")),
             n(f.get("f_wbits", "")),
+            *(n(f.get(col, "")) for col, _ in STAT_COLS),
         ))
 
     # an older data.sqlite3 predates the td_* columns, add them rather than
@@ -1154,7 +1172,7 @@ def main():
                      ("f_span", "FLOAT"),
                      ("f_random", "FLOAT"),
                      ("f_cluster", "FLOAT"),
-                     ("f_wbits", "FLOAT")):
+                     ("f_wbits", "FLOAT"), *STAT_COLS):
         if col not in have:
             conn.execute(f"ALTER TABLE data ADD COLUMN {col} {typ}")
 
@@ -1179,7 +1197,7 @@ def main():
                "irred_cls", "mc_log10", "cong_calls", "cong_and", "cong_xor",
                "cong_merged", "cong_units", "cong_time", "autarky_vars", "autarky_time",
                "bce_blockedK", "bce_pops", "bce_reproc", "bce_triples", "bce_skipped_lits",
-               "count_time", "f_binfrac", "f_avglong", "f_clsvar", "f_occcv", "f_modallen", "f_horn", "f_polarity", "f_binonly", "f_span", "f_random", "f_cluster", "f_wbits"]
+               "count_time", "f_binfrac", "f_avglong", "f_clsvar", "f_occcv", "f_modallen", "f_horn", "f_polarity", "f_binonly", "f_span", "f_random", "f_cluster", "f_wbits"] + [col for col, _ in STAT_COLS]
     assert sorted(ordered) == sorted(data_cols), (set(ordered) ^ set(data_cols))
     conn.executemany(
         "INSERT INTO data (" + ",".join(ordered) + ") VALUES ("

@@ -373,6 +373,8 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 | `f_binfrac` / `f_avglong` / `f_clsvar` / `f_occcv` | `[formula]` line at count start: binary share of the clauses, avg long-clause length, clauses per var, var-occurrence coefficient of variation |
 | `f_modallen` / `f_horn` / `f_polarity` / `f_binonly` | share of long clauses with the most common length (1 = uniform k-SAT), Horn clauses, avg per-var polarity imbalance, vars in no long clause (2-CNF part) |
 | `f_span` / `f_random` / `f_cluster` / `f_wbits` | avg var-id span of a clause / #vars, occ CV x sqrt(mean occ) (~1 Poisson-random, 0 regular), sampled primal clustering coefficient, avg bits of the weights (FMpq) |
+| `comps_recordK` | All comps recorded (thousands) |
+| `work_propK` / `work_proplK` / `work_anaK` / `work_compK` / `work_setupK` / `work_btK` / `work_branchK` | Deterministic work counters (thousands): lits propagated, long clauses visited in propagation, record_comp scans, vars+long cls of comps made, of super comps set up, trail entries undone, vars scanned by branching |
 
 ### Branching heuristic notes
 

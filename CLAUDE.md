@@ -62,7 +62,6 @@ cd ../count_fuzzer
 ./fuzz.py --unweighted           # only unweighted
 ./fuzz.py --weighted             # only weighted
 ./fuzz.py --proj | --unproj      # projected / unprojected only
-./fuzz.py --buddy                # fuzz buddy too
 ./fuzz.py --threads K            # fuzz with --threads K passed to ganak
 ./fuzz.py -t T                   # per-instance timeout (default 4s)
 ./fuzz.py --valgrind P           # P% of ganak runs under valgrind (default 1); any error fails
@@ -251,7 +250,6 @@ slow when enabled. Turn on the least expensive flag that catches your bug.
 | `CHECK_TRAIL_ENTAILMENT` | trail-entailment check | The slowest check that does *not* verify counts: re-verifies the whole trail is entailed at each step. Last resort for trail/entailment bugs. | extreme |
 | `CHECK_COUNT` | `CHECK_COUNT_DO` | **The flag for wrong-count bugs.** Cross-checks every (sub-)count against an independent recount (`check_count*`). Also disables count reuse so cross-checking is valid — additionally pass `--cache 0` on the command line (see the note next to the define). Only `CHECK_COUNT_DO`/`check_count_norestart*` code may call those checkers (see "Notes about the code"). | extreme |
 | `CHECK_VIVIF` | `CHECK_VIVIF_DO` | Around every `vivify_all`: clause lists, both watches, reasons, nothing unit/conflicting, watches still valid after popping any number of levels, trail unchanged, new clauses implied and the formula equivalent (CMS). Pass via `-DCMAKE_CXX_FLAGS=-DCHECK_VIVIF` in `build-vivif/` and fuzz with `scripts/fuzz_vivif.py`. | high |
-| `BUDDY_ENABLED` | BuDDy code | Not a debug check: compile-time enable of BuDDy BDD-based counting of small components (pairs with the `--buddy` option). | n/a |
 
 ## Debugging a fuzzer-found bug
 

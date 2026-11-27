@@ -43,9 +43,6 @@ THE SOFTWARE.
 #include <treedecomp/TreeDecomposition.hpp>
 #include "structures.hpp"
 #include "heap.hpp"
-#ifdef BUDDY_ENABLED
-#include "bdd.h"
-#endif
 
 #include <cryptominisat5/cryptominisat.h>
 
@@ -431,16 +428,6 @@ public:
   void print_stat_line();
   uint64_t next_print_stat_cache = 4LL*1000LL*1000LL;
   uint64_t next_print_stat_confl = 100LL*1000LL;
-
-  // BDD
-  bool should_do_buddy_count() const;
-  bool do_buddy_count();
-#ifdef BUDDY_ENABLED
-  uint64_t buddy_count();
-  vector<uint32_t> vmap;
-  vector<uint32_t> vmap_rev;
-  bdd mybdd_two_or(Lit l, Lit r);
-#endif
 
   //  Conflict analysis below
   RetState resolve_conflict();

@@ -57,7 +57,6 @@ constexpr uint32_t td_at_or_above_indep = 10;
 /* #define CHECK_PROPAGATED */
 /* #define CHECK_IMPLIED */
 /* #define VERY_SLOW_DEBUG */
-/* #define BUDDY_ENABLED */
 /* #define ANALYZE_VERBOSE */
 // the slowest of all that's not verifying counts
 /* #define CHECK_TRAIL_ENTAILMENT */
@@ -134,11 +133,6 @@ constexpr bool must_check_count = false;
       to_clear.clear();} while (0)
 
 
-#ifdef BUDDY_ENABLED
-#define BUDDY_DO(x) do { x; } while (0)
-#else
-#define BUDDY_DO(x) do { } while (0)
-#endif
 
 
 

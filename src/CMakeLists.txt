@@ -47,18 +47,6 @@ set(SOURCES
     statistics.cpp
     clauseallocator.cpp
     MurmurHash3.cpp
-    buddy-2.4/src/bddio.c
-    buddy-2.4/src/bddop.c
-    buddy-2.4/src/bvec.c
-    buddy-2.4/src/cache.c
-    buddy-2.4/src/fdd.c
-    buddy-2.4/src/imatrix.c
-    buddy-2.4/src/kernel.c
-    buddy-2.4/src/pairs.c
-    buddy-2.4/src/prime.c
-    buddy-2.4/src/reorder.c
-    buddy-2.4/src/tree.c
-    buddy-2.4/src/cppext.cxx
     ganak.cpp
     ganak_c.cpp
     comp_cache_if.cpp
@@ -77,8 +65,6 @@ target_include_directories(ganak
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/
-    ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/src/
   PUBLIC
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>

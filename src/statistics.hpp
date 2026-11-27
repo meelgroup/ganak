@@ -124,15 +124,6 @@ public:
   uint64_t zero_sat_unsat = 0;
   uint64_t sat_rst = 0;
 
-  // buddy stats
-  uint64_t buddy_called = 0;
-  uint64_t buddy_unsat = 0;
-  uint64_t buddy_num_vars = 0;
-  uint64_t buddy_num_bin_cls = 0;
-  uint64_t buddy_num_long_cls = 0;
-  uint64_t buddy_max_bin_cls = 0;
-  uint64_t buddy_max_long_cls = 0;
-  uint64_t buddy_max_num_vars = 0;
 
   /* cache statistics */
   uint64_t max_cache_size_bytes = 0;

@@ -225,7 +225,7 @@ void add_ganak_options()
     // d-DNNF compilation
     add_arg("--compilecheck", conf.compile_check, "With --compile, check every node of the circuit as it is written (decomposable, deterministic, smooth if unprojected, and counting what was counted for its level), and abort at the first wrong one");
     add_arg("--compilecheckthorough", compile_check_thorough, "With --compile, also check by SAT calls that Arjun's definitions extend every model of the CNF the circuit is compiled from to a model of the input, and that the vars the circuit branches on outside the projection are defined by it");
-    add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (BDNNF binary format, see spec-bdnnf.md). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify/BCE). Arjun only runs steps that keep every model, and never eliminates a projection var; the circuit is over the input's vars, with AIG (Skolem) definitions for the eliminated non-projection vars.");
+    add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (BDNNF binary format, see spec-bdnnf.md). Forces a clean single-threaded search (no restarts, exact cache, no vivify/BCE). Arjun only runs steps that keep every model, and never eliminates a projection var; the circuit is over the input's vars, with AIG (Skolem) definitions for the eliminated non-projection vars.");
 
     // Arjun options
     add_arg("--arjun", do_arjun, "Use arjun");
@@ -327,12 +327,9 @@ void add_ganak_options()
     add_arg("--cachetime", conf.cache_time_update, "2 = set to mid-point");
     add_arg("--lru", conf.lru_eviction, "Cache eviction: 1 = LRU (evict oldest), 0 = reverse-LRU/default (evict newest)");
 
-    // BuDDy options
-    add_arg("--buddy", conf.do_buddy, "Run BuDDy");
     add_arg("--bce", conf.do_bce, "Dynamic blocked clause elimination on non-indep vars during search");
     add_arg("--bceocclim", conf.bce_occ_lim, "BCE: skip a literal as blocking literal if |occ(l)|*|occ(~l)| is above this");
     add_arg("--bcecandlim", conf.bce_cand_lim, "BCE: stop setting up blocking literals once this many resolution candidates are stored");
-    add_arg("--buddymaxcls", conf.buddy_max_cls, "Run BuDDy");
 
     // Shrinking options
     add_arg("--shrink", conf.do_shrink, "Block-wise secondary UIP shrinking (CaDiCaL-style)");
@@ -427,13 +424,12 @@ void parse_supported_options(int argc, char** argv) {
     }
     if (!conf.compile_fname.empty()) {
       // d-DNNF needs a single clean DPLL tree: no restarts, exact cache, no
-      // opaque leaves (BuDDy), no clause rewriting (vivify), original var
+      // no clause rewriting (vivify), original var
       // numbering (Arjun/Puura off), one thread. SAT oracle stays on; it
       // witnesses synthesized vars on projected inputs and never fires otherwise.
       conf.do_restart = 0;
       conf.bj_defer = 0;
       conf.do_probabilistic_hashing = 0;
-      conf.do_buddy = 0;
       conf.do_vivify = 0;
       // BCE removes clauses: a SAT witness could violate one
       conf.do_bce = 0;
@@ -1115,10 +1111,6 @@ int main(int argc, char *argv[]) {
     read_in_a_file(in_fname, &cnf, etof_conf.all_indep, fg);
   }
 
-  if (cnf.get_weighted() && conf.do_buddy) {
-    cerr << "ERROR: Cannot run BuDDy with weighted CNF" << endl;
-    exit(EXIT_FAILURE);
-  }
   cnf.clean_idiotic_mccomp_weights();
   cnf.check_cnf_sampl_sanity();
   cnf.check_cnf_vars();

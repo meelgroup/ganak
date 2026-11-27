@@ -46,9 +46,6 @@ THE SOFTWARE.
 #include "time_mem.hpp"
 #include <treedecomp/IFlowCutter.hpp>
 #include <treedecomp/graph.hpp>
-#ifdef BUDDY_ENABLED
-#include "bdd.h"
-#endif
 #include <approxmc/approxmc.h>
 #include "timer.hpp"
 
@@ -1347,11 +1344,6 @@ void Counter::count_loop() {
       if (!is_indep) {
         if (run_sat_solver(state, false)) goto backtrack;
         else goto start11;
-      }
-
-      if (conf.do_buddy && should_do_buddy_count()) {
-        if (do_buddy_count()) break;
-        goto start11;
       }
 
       while (!propagate()) {
@@ -4638,186 +4630,6 @@ void Counter::check_sat_solution() const {
   assert(good);
 }
 
-#ifdef BUDDY_ENABLED
-#define mybdd_or(a,l) \
-  do { \
-  if (!(l).sign()) tmp |= bdd_ithvar(vmap_rev[(l).var()]); \
-  else tmp |= bdd_nithvar(vmap_rev[(l).var()]); \
-  } while(0)
-
-bdd Counter::mybdd_two_or(Lit l, Lit r) {
-  auto to_bdd = [this](Lit lit) {
-    return !lit.sign() ? bdd_ithvar(vmap_rev[lit.var()]) : bdd_nithvar(vmap_rev[lit.var()]);
-  };
-  return bdd_or(to_bdd(l), to_bdd(r));
-}
-
-bool Counter::should_do_buddy_count() const {
-  const auto& d = decisions.at(dec_level()-1);
-  const Comp& c = comp_manager->get_super_comp(d);
-  if (c.nVars() >= 62 || c.nVars() <= 3 || c.num_long_cls() > conf.buddy_max_cls) {
-    /* cout << "vars: " << c->nVars() << " cls: " << c->numBinCls() + c->num_long_cls() << endl; */
-    return false;
-  }
-  return true;
-}
-
-bool Counter::do_buddy_count() {
-  stats.buddy_called++;
-  uint64_t cnt = buddy_count();
-
-  debug_print("Buddy count: " << cnt);
-  if (cnt > 0) {
-    FF ff_cnt = std::make_unique<ArjunNS::FMpz>(mpz_class(cnt));
-    decisions.top().reset();
-    decisions.top().change_to_right_branch();
-    decisions.top().include_solution(ff_cnt);
-  } else {
-    decisions.top().mark_branch_unsat();
-    decisions.top().change_to_right_branch();
-    decisions.top().mark_branch_unsat();
-  }
-  return cnt > 0;
-}
-
-// TODO Yash's ideas:
-// * merge the BDDs in a tree-like manner
-// * Mate: tune bdd_setcacheratio
-// * need to use double bdd_satcountlnset(BDD r, BDD varset) to do projected counting
-//   --> NOTE: double needs to be changed to int64_t
-uint64_t Counter::buddy_count() {
-  const Lit top_lit = trail.back();
-  const uint32_t top_var = top_lit.var();
-  const auto& s = decisions.top();
-  auto const& sup_at = s.super_comp(); //TODO bad -- it doesn't take into account
-                                       //that it could have already fallen into pieces
-                                       //at current level
-  const auto& c = comp_manager->at(sup_at);
-  vmap.clear();
-  vmap_rev.resize(nVars()+1);
-
-  // variable mapping
-  uint32_t proj_end = 63;
-  bool proj = false;
-  for(uint32_t i = 0; i < c->nVars(); i++) {
-    const uint32_t var = c->vars_begin()[i];
-    assert(var == top_var || val(var) == X_TRI);
-    if (var >= indep_support_end && !proj) {
-      proj_end = i;
-      proj = true;
-    }
-    vmap.push_back(var);
-    vmap_rev[vmap[i]] = i;
-  }
-  VERBOSE_DEBUG_DO(cout << "Vars in BDD: "; for(const auto& v: vmap) cout << v << " "; cout << endl);
-  debug_print("proj_end: " << proj_end << " indep_support_end: " << indep_support_end);
-
-  // The final built bdd
-  uint32_t num_total = 0;
-  bdd fin;
-  bdd backup;
-
-  // Long clauses
-  uint32_t actual_long = 0;
-  const auto& ana = comp_manager->get_ana();
-  for (auto it_cl = c->cls_begin(); *it_cl != sentinel; it_cl++) {
-    auto idx = *it_cl;
-    debug_print("IDX: " << idx);
-    Lit const* cl = ana.get_idx_to_cl(idx);
-    VERBOSE_DEBUG_DO(cout << "Long cl." << endl;
-      for(Lit const* l = cl; *l != SENTINEL_LIT; l++) cout << *l << " ";
-      cout << endl);
-
-    auto tmp = bdd_false();
-    for(Lit const* l = cl; *l != SENTINEL_LIT; l++) {
-      assert(l->var() == top_var || val(*l) != T_TRI);
-      if (l->var() != top_var && val(*l) != X_TRI) continue;
-      mybdd_or(tmp, *l);
-    }
-    if (num_total % 2 == 0) backup = tmp;
-    else if (num_total == 1) fin = bdd_and(backup, tmp);
-    else fin &= bdd_and(backup, tmp);
-    num_total++;
-    actual_long++;
-  }
-
-  // Binary clauses
-  uint32_t actual_bin = 0;
-  for(const auto& v: vmap) for(bool sign : {false, true}) {
-    Lit l(v, sign);
-    if (v != top_var && val(l) != X_TRI) continue;
-    for(const auto& ws: watches[l].binaries) {
-      if (!ws.irred() || ws.lit() < l) continue;
-      if (ws.lit().var() != top_var && val(ws.lit()) == T_TRI) continue;
-      SLOW_DEBUG_DO(assert(
-            ws.lit().var() == top_var ||
-            val(ws.lit()) == X_TRI)); // otherwise would have propagated/conflicted
-
-      const auto tmp = mybdd_two_or(l, ws.lit());
-      if (num_total % 2 == 0) backup = tmp;
-      else if (num_total == 1) fin = bdd_and(backup, tmp);
-      else fin &= bdd_and(backup, tmp);
-      num_total++;
-      actual_bin++;
-
-      debug_print("bin cl: " << l << " " << ws.lit() << " 0");
-    }
-  }
-  if (num_total == 0) fin = bdd_true();
-  else if (num_total == 1) fin = backup;
-  else if (num_total % 2 == 1) fin = bdd_and(backup, fin);
-
-  stats.buddy_num_bin_cls += actual_bin;
-  stats.buddy_num_long_cls += actual_long;
-  stats.buddy_num_vars += vmap.size();
-  stats.buddy_max_bin_cls = std::max<uint64_t>(actual_bin, stats.buddy_max_bin_cls);
-  stats.buddy_max_long_cls = std::max<uint64_t>(actual_long, stats.buddy_max_long_cls);
-  stats.buddy_max_num_vars = std::max<uint64_t>(vmap.size(), stats.buddy_max_num_vars);
-
-  VERBOSE_DEBUG_DO(
-  if (actual_long != c->num_long_cls()) {
-    cout << "WARN: numlong: " << c->num_long_cls() << " actual long: " << actual_long << endl;
-  });
-  /* cout << "bin cls: " << actual_bin << " long cls: " << actual_long << " vars: " << vmap.size() << endl; */
-
-  assert(c->num_long_cls() == actual_long);
-
-#ifdef VERBOSE_DEBUG
-  std::stringstream fname;
-  fname << "bdd-" << stats.buddy_called << ".dot";
-  bdd_fnprintdot(fname.str().c_str(), fin, proj_end);
-  debug_print("BDD written to: " << fname.str());
-#endif
-
-  // Trick: when all is projected, we can set 64, and then subtract. This is
-  // more generic. Otherwise, bdd cache will not match if we set the correct value
-  // This way, we are more generic on non-projected, and can still use it on projected
-  uint64_t cnt;
-  if (proj_end == 63)
-    cnt = bdd_satcount_i64(fin, proj_end)>>(63-vmap.size());
-  else
-    cnt = bdd_satcount_i64(fin, proj_end);
-  VERBOSE_DEBUG_DO(
-  cout << "cnt: " << cnt << endl;
-  cout << "num bin cls: " << actual_bin << endl;
-  cout << "num long cls: " << actual_long << endl;
-  cout << "----------------------------------------------" << endl);
-  stats.buddy_unsat += cnt == 0;
-
-  return cnt;
-}
-#else
-bool Counter::should_do_buddy_count() const { // NOLINT(readability-convert-member-functions-to-static)
-  cerr << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
-  exit(EXIT_FAILURE);
-  return false;
-}
-bool Counter::do_buddy_count() { // NOLINT(readability-convert-member-functions-to-static)
-  cerr << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
-  exit(EXIT_FAILURE);
-}
-#endif
-
 template<typename T2>
 void Counter::check_cl_propagated_conflicted(T2& cl, uint32_t off) const {
   Lit unk = NOT_A_LIT;
@@ -5199,17 +5011,6 @@ void Counter::init_and_preproc() {
   CHECK_PROPAGATED_DO(check_trail(true));
 }
 
-#ifdef BUDDY_ENABLED
-void my_gbchandler(int pre, bddGbcStat *) {
-   if (!pre) {
-      /* printf("Garbage collection #%d: %d nodes / %d free", s->num, s->nodes, s->freenodes); */
-      /* printf(" / %.1fs / %.1fs total\n", */
-      /* (double)s->time/(double)(CLOCKS_PER_SEC), */
-      /* (double)s->sumtime/(double)CLOCKS_PER_SEC); */
-   }
-}
-#endif
-
 Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
     fg(_fg->dup())
     , is_weighted(fg->weighted())
@@ -5224,18 +5025,9 @@ Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
   lbd_cutoff = conf.base_lbd_cutoff;
   two = fg->one();
   *two += *fg->one();
-
-  BUDDY_DO(if (conf.do_buddy) {
-    bdd_init(10000, 100000);
-    bdd_gbc_hook(my_gbchandler);
-    bdd_setvarnum(63);
-    bdd_autoreorder(BDD_REORDER_NONE);
-  });
 }
 
-Counter::~Counter() {
-  BUDDY_DO(if (conf.do_buddy) bdd_done());
-}
+Counter::~Counter() = default;
 
 void Counter::simple_preprocess() {
   verb_print(2, "[simple-preproc] Running.");

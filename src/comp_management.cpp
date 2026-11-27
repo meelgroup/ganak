@@ -87,6 +87,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Sets all unknown vars in seen[] and sets all clauses in seen[] to unvisited
   // Also zeroes out frequency_scores. Sets num_long_cls and num_bin_cls to 0
   ana.setup_analysis_context(top, super_comp);
+  stats.work_setup += super_comp.nVars() + super_comp.num_long_cls();
 
   // Skip the hit_node store on every cache lookup in the common no-compile path.
   const bool compiling = counter->get_compiler().active();
@@ -103,6 +104,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
       cache->set_probe(*p_new_comp, hash_seed, bpc);
       const uint32_t br_nvars = p_new_comp->nVars();
+      stats.work_comp += br_nvars + p_new_comp->num_long_cls();
       br_comps++;
       br_child_vars += br_nvars;
       br_largest = std::max(br_largest, br_nvars);

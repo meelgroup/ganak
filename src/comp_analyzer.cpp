@@ -296,6 +296,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
   stats.comps_recorded++;
 
+  uint64_t work = 0;
   for (uint32_t i = 0; i < comp_vars.size(); i++) {
     const auto v = comp_vars[i];
     SLOW_DEBUG_DO(assert(is_unknown(v)));
@@ -358,9 +359,11 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
 #else
     constexpr bool all_bins = false;
 #endif
+    work++;
     if (all_bins || sup_comp_bin_cls != archetype.num_bin_cls) {
       // we have not seen all binary clauses
       // traverse binary clauses
+      work += holder.size_bin(v);
       uint32_t* bins = holder.begin_bin(v);
       uint32_t const* bins_end = bins + holder.size_bin(v);
       uint32_t bin_i = 0;
@@ -430,6 +433,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
 #endif
     ClData* longs = holder.begin_long(v);
     ClData* longs_end = longs+holder.size_long(v);
+    work += holder.size_long(v);
     while (longs != longs_end) {
       SLOW_DEBUG_DO(assert(archetype.num_long_cls <= sup_comp_long_cls));
       ClData& d = *longs;
@@ -483,6 +487,7 @@ end_sat:;
     /* cout << "AFTER holder.size_long(v): " << holder.size_long(v) << endl; */
     /* cout << "AFTER holder.orig_size_long(v): " << holder.orig_size_long(v) << endl; */
   }
+  stats.work_ana += work;
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "
       << comp_vars.size() << " long");
 }

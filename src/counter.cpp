@@ -1606,6 +1606,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   double br_min_td = 1e9;
   uint32_t br_td_ties = 0;
 
+  stats.work_branch += comp_manager->get_super_comp(decisions.top()).nVars();
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
     // Update at[v] for ALL vars in the component (including already-set ones) so that
@@ -2715,6 +2716,8 @@ bool Counter::propagate(bool out_of_order) {
   confl = Antecedent();
   debug_print("qhead in propagate(): " << qhead << " trail sz: " << trail.size() << " dec lev: " << dec_level() << " trail follows.");
   VERBOSE_DEBUG_DO(print_trail());
+  uint64_t prop_cl = 0;
+  const uint32_t qhead_start = qhead;
   for (; qhead < trail.size(); qhead++) {
     const Lit plit = trail[qhead].neg();
     const int32_t lev = var(plit).decision_level;
@@ -2759,6 +2762,7 @@ bool Counter::propagate(bool out_of_order) {
 
       const auto ofs = it->ofs;
       Clause& c = *alloc->ptr(ofs);
+      prop_cl++;
       if (c[0] == plit) { std::swap(c[0], c[1]); }
 
 #ifdef VERBOSE_DEBUG
@@ -2833,6 +2837,8 @@ bool Counter::propagate(bool out_of_order) {
     });
   CHECK_PROPAGATED_DO(if (confl.isNull()) check_all_propagated_conflicted());
   debug_print("After propagate, qhead is: " << qhead << " conflict: " << std::boolalpha << !confl.isNull());
+  stats.work_prop_cl += prop_cl;
+  stats.work_prop += qhead - qhead_start;
   return confl.isNull();
 }
 
@@ -5516,6 +5522,7 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
   VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {
       print_trail(false, false);assert(false);});
   if (!sat_mode()) comp_manager->clean_remain_comps_of(decisions.top());
+  stats.work_bt += trail.size() - keep_from;
   trail.resize(jt - trail.begin());
   if (bce) bce->backtrack(keep_from);
   if (dec_level() == 0) qhead = 0;

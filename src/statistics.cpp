@@ -122,6 +122,10 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setprecision(2));
   verb_print(1, "comps recordK/non-reset ratio  " << comps_recorded/1000 << " / "
         << safe_div(comps_non_reset, comps_reset+comps_non_reset));
+  verb_print(1, "work K prop/cl/ana/cmp/sup/bt/br " << work_prop/1000 << " / " << work_prop_cl/1000
+        << " / " << work_ana/1000 << " / " << work_comp/1000 << " / " << work_setup/1000
+        << " / " << work_bt/1000 << " / " << work_branch/1000);
+  verb_print(1, "work K field ops                " << work_fops()/1000);
   if (bce_init_time > 0 || bce_blocked > 0)
     verb_print(1, "bce blockedK/movesK/pops/reproc/T " << bce_blocked/1000 << " / "
       << bce_moves/1000 << " / " << bce_pops << " / " << bce_reproc << " / " << bce_init_time);

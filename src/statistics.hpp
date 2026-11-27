@@ -150,6 +150,16 @@ public:
   uint64_t comps_reset = 0;
   uint64_t comps_non_reset = 0;
   uint32_t comps_recorded = 0;
+  // Deterministic work counters
+  uint64_t work_prop = 0;      // lits propagated
+  uint64_t work_prop_cl = 0;   // long clauses dereferenced in propagation
+  uint64_t work_ana = 0;       // vars, bin and long occurrences scanned by record_comp
+  uint64_t work_comp = 0;      // vars + long cls of the comps made (packing, hashing)
+  uint64_t work_setup = 0;     // vars + long cls of the super comps analysed
+  uint64_t work_bt = 0;        // trail entries walked in backtracking
+  uint64_t work_branch = 0;    // vars scanned by find_best_branch
+  // field ops: about one per cache lookup and two per decision
+  uint64_t work_fops() const { return num_cache_look_ups + 2*decisions; }
   uint64_t bce_blocked = 0;
   uint64_t bce_pops = 0;
   uint64_t bce_reproc = 0;

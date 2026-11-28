@@ -2636,8 +2636,9 @@ only_dirs = [
     # "out-ganak-mccomp2324-2893602-1",  # subsumption, chris-sweep
     # "out-ganak-mccomp2324-2893602-4",  # subsumption, chris-sweep
     # "out-ganak-mccomp2324-2898948-0",  # merging different branches, chris v2
-    "out-ganak-mccomp2324-2906509", # more
-    "out-ganak-mccomp2324-2916601-", # more
+    # "out-ganak-mccomp2324-2906509", # more
+    # "out-ganak-mccomp2324-2916601-", # FRONTIER
+    "out-ganak-mccomp2324-2939082-", # buddy
 
 ]
 # only_dirs = [
